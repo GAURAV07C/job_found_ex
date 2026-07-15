@@ -26,8 +26,8 @@ function buildInfra() {
     QUEUE_NAME,
     async (job) => {
       const mail = job.data;
-      // BullMQ limiter enforces the rate limit between jobs.
       const info = await sendMail(mail);
+      await track.markSent(mail.trackId).catch(() => {});
       return { messageId: info.messageId, to: mail.to };
     },
     {
@@ -41,11 +41,12 @@ function buildInfra() {
   );
 
   worker.on('completed', (job) => {
-    console.log(`[queue] ✅ sent -> ${job.data.to} (job ${job.id})`);
+    console.log(`[queue] sent -> ${job.data.to} (job ${job.id})`);
   });
 
   worker.on('failed', (job, err) => {
-    console.error(`[queue] ❌ failed -> ${job?.data?.to} (job ${job?.id}):`, err.message);
+    console.error(`[queue] failed -> ${job?.data?.to} (job ${job?.id}):`, err.message);
+    if (job?.data?.trackId) track.markFailed(job.data.trackId, err.message).catch(() => {});
   });
 }
 

@@ -61,6 +61,23 @@ async function recordClick(trackId, url) {
   await conn.expire(CLICKS_PREFIX + trackId, 60 * 60 * 24 * 30);
 }
 
+// Record actual send outcome so the dashboard shows Sent / Failed (not just opens)
+async function markSent(trackId) {
+  if (!trackId) return;
+  const conn = getClient();
+  await conn.hset(META_PREFIX + trackId, 'status', 'sent');
+}
+
+async function markFailed(trackId, errMsg) {
+  if (!trackId) return;
+  const conn = getClient();
+  await conn.hset(
+    META_PREFIX + trackId,
+    'status', 'failed',
+    'error', String(errMsg || '').slice(0, 200)
+  );
+}
+
 async function getStatus(trackId) {
   const conn = getClient();
   const meta = await conn.hgetall(META_PREFIX + trackId);
@@ -75,6 +92,8 @@ async function getStatus(trackId) {
     to: meta?.to || '',
     founderId: meta?.founderId || '',
     subject: meta?.subject || '',
+    status: meta?.status || 'queued',
+    error: meta?.error || '',
     opened: opens > 0,
     openCount: opens,
     clicked: clicks.length > 0,
@@ -113,6 +132,8 @@ module.exports = {
   buildTrackedHtml,
   recordOpen,
   recordClick,
+  markSent,
+  markFailed,
   getStatus,
   listRecent,
 };

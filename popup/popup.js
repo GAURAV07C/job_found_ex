@@ -301,8 +301,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (settings.qaAboutMe) document.getElementById('qa-about-me').value = settings.qaAboutMe;
   if (settings.qaLookingFor) document.getElementById('qa-looking-for').value = settings.qaLookingFor;
   if (settings.qaAchievement) document.getElementById('qa-achievement').value = settings.qaAchievement;
-  if (settings.backendUrl) document.getElementById('set-backend-url').value = settings.backendUrl;
-  if (settings.backendApiKey) document.getElementById('set-backend-key').value = settings.backendApiKey;
+  const backendUrlInput = document.getElementById('set-backend-url');
+  const backendKeyInput = document.getElementById('set-backend-key');
+  backendUrlInput.value = settings.backendUrl || JFH_CONFIG.BACKEND.DEFAULT_URL;
+  backendKeyInput.value = settings.backendApiKey || JFH_CONFIG.BACKEND.DEFAULT_API_KEY;
 
   // Custom Template Logic
   const toggleTpl = document.getElementById('toggle-custom-template');
@@ -703,13 +705,20 @@ document.addEventListener('DOMContentLoaded', async () => {
       sent.forEach((s) => {
         const item = document.createElement('div');
         item.className = 'data-item';
+        const status = s.status || 'queued';
+        let statusBadge;
+        if (status === 'sent') statusBadge = '✅ Sent';
+        else if (status === 'failed') statusBadge = '❌ Failed';
+        else statusBadge = '⏳ Queued';
         const opened = s.opened ? `📖 Opened (${s.openCount})` : '📭 Not opened';
         const clicked = s.clicked ? `  •  🔗 Clicked (${s.clickCount})` : '';
+        const errLine = s.error ? `<div class="tracking-status" style="color:#ff6b6b;">${s.error}</div>` : '';
         item.innerHTML = `
           <div style="flex:1;">
             <div class="data-item-main">${s.to || '(unknown)'}</div>
             <div class="data-item-sub">${s.subject || ''}</div>
-            <div class="tracking-status">${opened}${clicked}</div>
+            <div class="tracking-status">${statusBadge}${status === 'sent' ? '  •  ' + opened + clicked : ''}</div>
+            ${errLine}
           </div>`;
         sentEl.appendChild(item);
       });
