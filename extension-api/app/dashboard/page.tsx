@@ -16,7 +16,7 @@ type SentEmail = {
 
 export default function Dashboard() {
   const [apiKey, setApiKey] = useState('job-founder-hunter-dev-key');
-  const [baseUrl, setBaseUrl] = useState('http://localhost:3000');
+  const [baseUrl, setBaseUrl] = useState('https://job-found-exapi.vercel.app');
   const [to, setTo] = useState('gaurav07c@gmail.com');
   const [subject, setSubject] = useState('[TEST] Full Stack Engineer for Acme Startup');
   const [body, setBody] = useState('Hi Alex,\n\nI\'m Gaurav, a Full Stack Engineer currently building production applications with Node.js, TypeScript, React, Next.js, PostgreSQL, and Redis.\n\nI\'m exploring my next opportunity and wanted to reach out directly. If Acme Startup is hiring now—or expects to hire in the coming months—I would love to be considered.\n\nResume: https://resume-lemon-rho.vercel.app/\n\nThanks for your time.\n\nBest,\nGaurav Kumar\ngaurav07c@gmail.com');

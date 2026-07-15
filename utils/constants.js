@@ -104,7 +104,7 @@ const JFH_CONFIG = {
 
   // ========== BACKEND (Nodemailer + Queue) ==========
   BACKEND: {
-    DEFAULT_URL: 'http://localhost:3000',
+    DEFAULT_URL: 'https://job-found-exapi.vercel.app',
     DEFAULT_API_KEY: 'job-founder-hunter-dev-key',
     SEND_ENDPOINT: '/api/send',
     QUEUE_ENDPOINT: '/api/queue',
