@@ -38,7 +38,7 @@
     fab.style.cssText = `
       position: fixed;
       top: 80px;
-      right: 24px;
+      left: 24px;
       z-index: 99999;
       font-family: 'Inter', sans-serif;
     `;

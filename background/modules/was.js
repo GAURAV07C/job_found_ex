@@ -34,7 +34,7 @@ async function processNextWasJob(settings) {
     broadcastWasState({ message: 'All jobs applied!' });
     chrome.notifications.create({
       type: 'basic',
-      iconUrl: '/assets/icon128.png',
+      iconUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
       title: 'Auto-Apply Complete!',
       message: `Applied to ${JFH_State.wasApplyQueue.length} jobs on WorkAtAStartup.`
     });

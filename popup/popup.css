@@ -527,3 +527,21 @@ input:focus, textarea:focus, select:focus {
   color: var(--text-main);
   border-color: var(--primary);
 }
+.send-mail-btn {
+  background: transparent;
+  border: 1px solid var(--primary);
+  color: var(--primary);
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 10px;
+  cursor: pointer;
+  margin-top: 4px;
+}
+.send-mail-btn:hover {
+  background: var(--primary);
+  color: white;
+}
+.send-mail-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

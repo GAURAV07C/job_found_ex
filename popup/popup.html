@@ -23,6 +23,7 @@
     <nav class="tabs">
       <button class="tab-btn active" data-tab="home">Home</button>
       <button class="tab-btn" data-tab="data">Data</button>
+      <button class="tab-btn" data-tab="sent">Sent</button>
       <button class="tab-btn" data-tab="dashboard">Dashboard</button>
       <button class="tab-btn" data-tab="profile">My Profile</button>
     </nav>
@@ -122,6 +123,12 @@
           <button id="btn-data-find-emails" class="btn small secondary">🔍 Find Emails</button>
           <button id="btn-data-send-backend" class="btn small primary">🚀 Send All (Backend)</button>
           <button id="btn-refresh-tracking" class="btn small outline">🔄 Refresh Tracking</button>
+          <button id="btn-toggle-debug" class="btn small outline">🐛 Debug</button>
+        </div>
+
+        <div id="data-debug" style="display:none; padding:8px; background:rgba(0,0,0,0.35); border:1px solid var(--border-color); border-radius:6px; margin-bottom:10px; font-size:11px; color:var(--text-muted);">
+          <strong style="color:var(--text-main);">🐛 Debug Info</strong>
+          <div id="data-debug-content"></div>
         </div>
 
           <div class="data-list-container">
@@ -141,6 +148,19 @@
             </div>
           </div>
         <button id="btn-clear-db" class="btn small danger outline mt-10">Clear All Data</button>
+      </section>
+
+      <!-- Sent Tab -->
+      <section id="tab-sent" class="tab-content">
+        <div class="data-header">
+          <h3>📤 Sent Emails</h3>
+          <button id="btn-refresh-sent" class="btn small outline">🔄 Refresh</button>
+        </div>
+        <div class="data-list-container">
+          <div class="data-list" id="sent-list-view">
+            <div class="empty-state">Loading sent emails...</div>
+          </div>
+        </div>
       </section>
 
       <!-- Dashboard Tab -->

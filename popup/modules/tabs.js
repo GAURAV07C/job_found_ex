@@ -2,7 +2,7 @@
  * Job Founder Hunter - Tabs Module
  */
 
-function initTabs({ onData, onHome, onDashboard }) {
+function initTabs({ onData, onHome, onDashboard, onSent }) {
   const tabBtns = document.querySelectorAll('.tab-btn');
   const tabContents = document.querySelectorAll('.tab-content');
 
@@ -19,6 +19,7 @@ function initTabs({ onData, onHome, onDashboard }) {
       if (btn.dataset.tab === 'data' && onData) onData();
       if (btn.dataset.tab === 'home' && onHome) onHome();
       if (btn.dataset.tab === 'dashboard' && onDashboard) onDashboard();
+      if (btn.dataset.tab === 'sent' && onSent) onSent();
     });
   });
 }

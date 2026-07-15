@@ -37,8 +37,9 @@ function startSendingViaBackend() {
   if (JFH_State.isRunning) return { error: 'Already running' };
 
   return JFH_DB.getAllSettings().then((settings) => {
+    // Auto-set action mode to backend when user explicitly uses backend send
     if (settings.emailActionMode !== 'backend') {
-      return { success: false, message: 'Please set Email Action to "Send via Backend" first (My Profile).' };
+      JFH_DB.saveSetting('emailActionMode', 'backend').catch(() => {});
     }
 
     return JFH_DB.getAllFounders().then((allFounders) => {
@@ -113,7 +114,6 @@ async function processNextEmail() {
 
     chrome.notifications.create({
       type: 'basic',
-      iconUrl: '../assets/icon128.png',
       title: 'Job Founder Hunter',
       message: completionMsg
     });

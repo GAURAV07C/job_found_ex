@@ -106,6 +106,76 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   };
 
+  // Load Sent Emails Tab
+  const loadSentTab = async () => {
+    const listEl = document.getElementById('sent-list-view');
+    if (!listEl) return;
+    listEl.innerHTML = '<div class="empty-state">Loading sent emails...</div>';
+
+    try {
+      const founders = await JFH_DB.getAllFounders();
+      const sent = founders.filter((f) => f.contacted || f.email);
+      if (!sent.length) {
+        listEl.innerHTML = '<div class="empty-state">No emails sent yet.</div>';
+        return;
+      }
+
+      listEl.innerHTML = '';
+      for (const f of sent) {
+        const item = document.createElement('div');
+        item.className = 'data-item';
+        const status = f.contacted ? '<span class="data-badge success">✅ Sent</span>' : '<span class="data-badge warning">📧 Email Found</span>';
+        const tracking = f.trackingId ? `<div class="tracking-status" id="sent-track-${f.id}">🔄 tracking…</div>` : '';
+        const sentAt = f.contactedAt ? `<div style="font-size:10px; color:var(--text-muted);">${new Date(f.contactedAt).toLocaleString()}</div>` : '';
+
+        item.innerHTML = `
+          <div style="flex:1; padding-right:8px;">
+            <div class="data-item-main">${f.name}</div>
+            <div class="data-item-sub">${f.title || f.role} @ ${f.companyName}</div>
+            <div class="founder-email-text">${f.email}</div>
+            ${sentAt}
+            ${tracking}
+          </div>
+          <div style="text-align:right;">
+            ${status}
+            <div style="margin-top:4px;">
+              <a href="${f.linkedinUrl}" target="_blank" style="color:var(--text-muted); font-size:10px; text-decoration:none;">🔗 LinkedIn</a>
+            </div>
+          </div>
+        `;
+        listEl.appendChild(item);
+      }
+
+      // Refresh tracking for sent emails
+      const backendAuth = await getBackendAuth();
+      for (const f of sent) {
+        if (!f.trackingId) continue;
+        const el = document.getElementById(`sent-track-${f.id}`);
+        if (!el) continue;
+        try {
+          const res = await JFH_Helpers.getTrackingStatus(f.trackingId, backendAuth);
+          if (res.success && res.status) {
+            const s = res.status;
+            let statusText = '';
+            if (s.opened) {
+              statusText = `📖 Opened ${s.openCount > 1 ? '(' + s.openCount + 'x)' : ''}`;
+              if (s.clicked) statusText += `  •  🔗 Clicked (${s.clickCount})`;
+            } else {
+              statusText = '📭 Not opened';
+            }
+            el.textContent = statusText;
+          } else {
+            el.textContent = '⚠️ tracking n/a';
+          }
+        } catch (e) {
+          el.textContent = '⚠️ tracking n/a';
+        }
+      }
+    } catch (e) {
+      listEl.innerHTML = '<div class="empty-state">⚠️ Error: ' + e.message + '</div>';
+    }
+  };
+
   // Load Data View (used by Data module)
   const loadDataView = async (view = 'founders', filter = 'all') => {
     const listEl = document.getElementById('data-list-view');
@@ -127,7 +197,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
       }
 
-      JFH_Data.renderFoundersList(founders);
+      JFH_Data.renderFoundersList(founders, view, filter);
       await JFH_Data.refreshTracking(founders);
     } else if (view === 'companies') {
       const companies = await JFH_DB.getAllCompanies();
@@ -155,6 +225,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     onData: () => loadDataView('founders', 'all'),
     onHome: () => { updateStats(); refreshBackendSendButton(); },
     onDashboard: () => JFH_DashboardModule?.load?.() || JFH_Dashboard?.load?.(),
+    onSent: loadSentTab,
   });
 
   JFH_Home.initHome({ updateStats, updateUIState, runSwTask, refreshBackendSendButton });
@@ -221,4 +292,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Initial count refresh
   setTimeout(refreshBackendSendButton, 500);
+
+  // Sent tab refresh button
+  const refreshSentBtn = document.getElementById('btn-refresh-sent');
+  if (refreshSentBtn) {
+    refreshSentBtn.addEventListener('click', loadSentTab);
+  }
 });

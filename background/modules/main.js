@@ -19,7 +19,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     broadcastState({ message: 'All drafts sent!' });
     chrome.notifications.create({
       type: 'basic',
-      iconUrl: '../assets/icon128.png',
+      iconUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
       title: 'Drafts Sent',
       message: `Successfully sent ${message.data.count} drafts.`
     });
