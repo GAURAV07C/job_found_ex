@@ -1,0 +1,5 @@
+{
+  "buildCommand": "cd vercel-api && npm install && npm run build",
+  "outputDirectory": "vercel-api/.next",
+  "framework": "nextjs"
+}
