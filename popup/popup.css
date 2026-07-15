@@ -475,3 +475,34 @@ input:focus, textarea:focus, select:focus {
   margin-top: 4px;
   word-break: break-all;
 }
+.preview-btn {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 10px;
+  cursor: pointer;
+  margin-top: 4px;
+}
+.preview-btn:hover {
+  background: rgba(255,255,255,0.1);
+  color: var(--text-main);
+}
+.email-preview {
+  display: none;
+  margin-top: 8px;
+  padding: 10px;
+  background: rgba(0,0,0,0.35);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  color: var(--text-main);
+}
+.tracking-status {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--secondary);
+}

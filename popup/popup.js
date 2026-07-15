@@ -21,6 +21,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       
       if (btn.dataset.tab === 'data') loadDataView();
       if (btn.dataset.tab === 'home') updateStats();
+      if (btn.dataset.tab === 'dashboard') loadDashboard();
     });
   });
 
@@ -112,6 +113,40 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
       });
     }
+  });
+
+  // --- New 3-phase backend flow ---
+  function runSwTask(type, successText) {
+    chrome.runtime.sendMessage({ type }, (response) => {
+      if (response && !response.success && response.message) {
+        alert(response.message);
+      } else if (response && response.success) {
+        updateUIState(true, false, 0, response.count, successText);
+        document.querySelector('.tab-btn[data-tab="home"]').click();
+      }
+    });
+  }
+
+  const findEmailsBtn = document.getElementById('btn-find-emails');
+  const sendBackendBtn = document.getElementById('btn-send-backend');
+  const dataFindEmailsBtn = document.getElementById('btn-data-find-emails');
+  const dataSendBackendBtn = document.getElementById('btn-data-send-backend');
+  const refreshTrackingBtn = document.getElementById('btn-refresh-tracking');
+
+  if (findEmailsBtn) findEmailsBtn.addEventListener('click', () => runSwTask('FIND_ALL_EMAILS', 'Finding emails...'));
+  if (sendBackendBtn) sendBackendBtn.addEventListener('click', () => {
+    if (confirm('Send ALL pending founder emails via the backend queue? (Backend mode must be set in Profile)')) {
+      runSwTask('SEND_ALL_BACKEND', 'Queuing emails to backend...');
+    }
+  });
+  if (dataFindEmailsBtn) dataFindEmailsBtn.addEventListener('click', () => runSwTask('FIND_ALL_EMAILS', 'Finding emails...'));
+  if (dataSendBackendBtn) dataSendBackendBtn.addEventListener('click', () => {
+    if (confirm('Send ALL pending founder emails via the backend queue?')) {
+      runSwTask('SEND_ALL_BACKEND', 'Queuing emails to backend...');
+    }
+  });
+  if (refreshTrackingBtn) refreshTrackingBtn.addEventListener('click', () => {
+    loadDataView();
   });
 
   pauseBtn.addEventListener('click', () => {
@@ -266,7 +301,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (settings.qaAboutMe) document.getElementById('qa-about-me').value = settings.qaAboutMe;
   if (settings.qaLookingFor) document.getElementById('qa-looking-for').value = settings.qaLookingFor;
   if (settings.qaAchievement) document.getElementById('qa-achievement').value = settings.qaAchievement;
-  if (settings.qaWhyLeaving) document.getElementById('qa-why-leaving').value = settings.qaWhyLeaving;
+  if (settings.backendUrl) document.getElementById('set-backend-url').value = settings.backendUrl;
+  if (settings.backendApiKey) document.getElementById('set-backend-key').value = settings.backendApiKey;
 
   // Custom Template Logic
   const toggleTpl = document.getElementById('toggle-custom-template');
@@ -328,13 +364,98 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     const rendered = JFH_Templates.render(templateId, dummyData);
-    
+
     if (previewBox.style.display === 'block') {
       previewBox.style.display = 'none';
     } else {
       previewBox.innerHTML = `<strong>Subject:</strong> ${rendered.subject}<br><br>${rendered.body}`;
       previewBox.style.display = 'block';
     }
+  });
+
+  // Send Test Mail to Self
+  const testMailBtn = document.getElementById('btn-test-mail');
+  const testMailStatus = document.getElementById('test-mail-status');
+
+  const buildTestMail = () => {
+    const userEmail = document.getElementById('set-email').value.trim();
+    const templateId = document.getElementById('set-template').value;
+    const dummyData = {
+      founder_name: 'Alex',
+      company_name: 'Acme Startup',
+      founder_title: 'CEO',
+      your_name: document.getElementById('set-name').value || '[Your Name]',
+      your_skills: document.getElementById('set-skills').value || '[Skills]',
+      resume_link: document.getElementById('set-resume').value || '[Resume]',
+      portfolio_link: document.getElementById('set-portfolio').value || '[Portfolio]',
+      github_link: document.getElementById('set-github').value || '[GitHub]',
+      linkedin_link: document.getElementById('set-linkedin').value || '[LinkedIn]',
+      position: document.getElementById('set-position').value || '[Position]',
+      your_email: userEmail
+    };
+    const rendered = JFH_Templates.render(templateId, dummyData);
+    return { userEmail, rendered };
+  };
+
+  testMailBtn.addEventListener('click', async () => {
+    const { userEmail, rendered } = buildTestMail();
+
+    if (!userEmail || !userEmail.includes('@')) {
+      testMailStatus.textContent = '⚠️ Please enter a valid email address first (Personal Details > Email Address).';
+      testMailStatus.style.display = 'block';
+      return;
+    }
+    if (!rendered) {
+      testMailStatus.textContent = '⚠️ Could not render template.';
+      testMailStatus.style.display = 'block';
+      return;
+    }
+
+    const subject = `[TEST] ${rendered.subject}`;
+    const body = rendered.body;
+
+    // Always send through the backend queue (with open + click tracking).
+    const auth = {
+      backendUrl: document.getElementById('set-backend-url').value || JFH_CONFIG.BACKEND.DEFAULT_URL,
+      apiKey: document.getElementById('set-backend-key').value || JFH_CONFIG.BACKEND.DEFAULT_API_KEY,
+    };
+    testMailStatus.textContent = '⏳ Sending test mail via backend...';
+    testMailStatus.style.display = 'block';
+    const res = await JFH_Helpers.sendEmailViaBackend(
+      { to: userEmail, subject, body, replyTo: userEmail },
+      auth
+    );
+    if (res.success) {
+      testMailStatus.textContent = `✅ Test mail queued! (${res.queued} email(s)) Tracking active. It will arrive at ${userEmail}.`;
+    } else {
+      // Fallback: open Gmail compose so the user can send manually
+      console.warn('[test mail] backend failed, falling back to Gmail:', res.message);
+      const encodedTo = encodeURIComponent(userEmail);
+      const encodedSubject = encodeURIComponent(subject);
+      const encodedBody = encodeURIComponent(body);
+      const gmailComposeUrl = `https://mail.google.com/mail/u/0/?view=cm&fs=1&to=${encodedTo}&su=${encodedSubject}&body=${encodedBody}`;
+      chrome.tabs.create({ url: gmailComposeUrl, active: true });
+      testMailStatus.textContent = '⚠️ Backend unavailable (' + (res.message || '') + '). Opened Gmail draft instead — no tracking.';
+    }
+    testMailStatus.style.display = 'block';
+  });
+
+  // Test Backend Connection
+  const testBackendBtn = document.getElementById('btn-test-backend');
+  const backendStatus = document.getElementById('backend-test-status');
+  testBackendBtn.addEventListener('click', async () => {
+    const auth = {
+      backendUrl: document.getElementById('set-backend-url').value || JFH_CONFIG.BACKEND.DEFAULT_URL,
+      apiKey: document.getElementById('set-backend-key').value || JFH_CONFIG.BACKEND.DEFAULT_API_KEY,
+    };
+    backendStatus.textContent = '⏳ Connecting...';
+    backendStatus.style.display = 'block';
+    const ok = await JFH_Helpers.pingBackend(auth);
+    backendStatus.textContent = ok
+      ? '✅ Backend connected!'
+      : '❌ Backend not reachable. Is the server running? (node server/src/server.js)';
+    backendStatus.style.color = ok ? 'var(--primary)' : '#ff6b6b';
+    backendStatus.style.display = 'block';
   });
 
   document.getElementById('profile-form').addEventListener('submit', async (e) => {
@@ -350,6 +471,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       linkedinLink: document.getElementById('set-linkedin').value,
       emailActionMode: document.getElementById('set-action-mode').value,
       selectedTemplate: document.getElementById('set-template').value,
+      // Backend mail server
+      backendUrl: document.getElementById('set-backend-url').value || JFH_CONFIG.BACKEND.DEFAULT_URL,
+      backendApiKey: document.getElementById('set-backend-key').value || JFH_CONFIG.BACKEND.DEFAULT_API_KEY,
       // New fields
       experience: document.getElementById('set-experience').value,
       availability: document.getElementById('set-availability').value,
@@ -401,14 +525,39 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
       
       listEl.innerHTML = '';
+      // Render a founder's email using the currently selected template
+      async function renderFounderEmail(founder) {
+        const s = await JFH_DB.getAllSettings();
+        const templateId = s.selectedTemplate || 'professional';
+        const data = {
+          founder_name: (founder.name || '').split(' ')[0],
+          company_name: founder.companyName || '',
+          founder_title: founder.title || founder.role || '',
+          your_name: s.userName || '',
+          your_skills: s.userSkills || '',
+          resume_link: s.resumeLink || '',
+          portfolio_link: s.portfolioLink || '',
+          github_link: s.githubLink || '',
+          linkedin_link: s.linkedinLink || '',
+          position: s.targetPosition || '',
+          your_email: s.userEmail || ''
+        };
+        return JFH_Templates.render(templateId, data) || { subject: '', body: '' };
+      }
+
+      const backendAuth = {
+        backendUrl: (await JFH_DB.getAllSettings()).backendUrl || JFH_CONFIG.BACKEND.DEFAULT_URL,
+        apiKey: (await JFH_DB.getAllSettings()).backendApiKey || JFH_CONFIG.BACKEND.DEFAULT_API_KEY,
+      };
+
       founders.forEach(f => {
         const item = document.createElement('div');
         item.className = 'data-item';
-        
+
         let badge = `<span class="data-badge">Pending</span>`;
         if (f.contacted) badge = `<span class="data-badge success">Contacted</span>`;
         else if (f.email) badge = `<span class="data-badge warning">Email Found</span>`;
-        
+
         const emailHtml = f.email ? `<div class="founder-email-text">${f.email}</div>` : '';
 
         item.innerHTML = `
@@ -416,7 +565,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             <div class="data-item-main">${f.name}</div>
             <div class="data-item-sub">${f.title || f.role} @ ${f.companyName}</div>
             ${emailHtml}
-            <button class="edit-btn" data-id="${f.id}">Edit</button>
+            <div style="margin-top:4px; display:flex; gap:6px; flex-wrap:wrap;">
+              <button class="edit-btn" data-id="${f.id}">Edit</button>
+              ${f.email ? `<button class="preview-btn" data-id="${f.id}">👁 Preview</button>` : ''}
+            </div>
+            <div class="email-preview" id="preview-${f.id}" style="display:none;"></div>
+            ${f.trackingId ? `<div class="tracking-status" id="track-${f.id}">🔄 tracking…</div>` : ''}
           </div>
           <div style="text-align:right;">
             ${badge}
@@ -428,14 +582,41 @@ document.addEventListener('DOMContentLoaded', async () => {
         listEl.appendChild(item);
       });
 
-      // Bind edit buttons
+      // Bind edit + preview buttons
       document.querySelectorAll('.edit-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
-          const id = e.target.dataset.id;
-          const founder = await JFH_DB.getFounder(id);
+          const founder = await JFH_DB.getFounder(e.target.dataset.id);
           if (founder) openEditModal(founder);
         });
       });
+      document.querySelectorAll('.preview-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          const id = e.target.dataset.id;
+          const founder = await JFH_DB.getFounder(id);
+          const box = document.getElementById('preview-' + id);
+          if (!box) return;
+          if (box.style.display === 'block') { box.style.display = 'none'; return; }
+          const rendered = await renderFounderEmail(founder);
+          box.textContent = `Subject: ${rendered.subject}\n\n${rendered.body}`;
+          box.style.display = 'block';
+        });
+      });
+
+      // Fetch open/click tracking status for sent emails
+      for (const f of founders) {
+        if (!f.trackingId) continue;
+        const el = document.getElementById('track-' + f.id);
+        if (!el) continue;
+        const res = await JFH_Helpers.getTrackingStatus(f.trackingId, backendAuth);
+        if (res.success && res.status) {
+          const s = res.status;
+          const parts = [s.opened ? `📖 Opened (${s.openCount})` : `📭 Not opened`];
+          if (s.clicked) parts.push(`🔗 Clicked (${s.clickCount})`);
+          el.textContent = parts.join('  •  ');
+        } else {
+          el.textContent = '⚠️ tracking n/a';
+        }
+      }
     } 
     else if (currentDataView === 'companies') {
       const companies = await JFH_DB.getAllCompanies();
@@ -481,6 +662,132 @@ document.addEventListener('DOMContentLoaded', async () => {
       alert('Database cleared.');
     }
   });
+
+  // ============ Dashboard ============
+  async function getBackendAuth() {
+    const s = await JFH_DB.getAllSettings();
+    return {
+      backendUrl: s.backendUrl || JFH_CONFIG.BACKEND.DEFAULT_URL,
+      apiKey: s.backendApiKey || JFH_CONFIG.BACKEND.DEFAULT_API_KEY,
+    };
+  }
+
+  async function loadDashboard() {
+    const note = document.getElementById('dashboard-backend-note');
+    const sentEl = document.getElementById('dashboard-sent');
+    const auth = await getBackendAuth();
+
+    if (!auth.backendUrl) {
+      note.style.display = 'block';
+      sentEl.innerHTML = '<div class="empty-state">Backend URL not set (My Profile).</div>';
+      return;
+    }
+    note.style.display = 'none';
+    sentEl.innerHTML = '<div class="empty-state">Loading sent emails…</div>';
+
+    try {
+      const res = await fetch(auth.backendUrl + JFH_CONFIG.BACKEND.SENT_ENDPOINT, {
+        headers: { 'x-api-key': auth.apiKey },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        sentEl.innerHTML = '<div class="empty-state">⚠️ ' + (data.message || 'Backend error') + '</div>';
+        return;
+      }
+      const sent = (data.sent || []).sort((a, b) => (b.trackId || '').localeCompare(a.trackId || ''));
+      if (sent.length === 0) {
+        sentEl.innerHTML = '<div class="empty-state">No emails sent yet.</div>';
+        return;
+      }
+      sentEl.innerHTML = '';
+      sent.forEach((s) => {
+        const item = document.createElement('div');
+        item.className = 'data-item';
+        const opened = s.opened ? `📖 Opened (${s.openCount})` : '📭 Not opened';
+        const clicked = s.clicked ? `  •  🔗 Clicked (${s.clickCount})` : '';
+        item.innerHTML = `
+          <div style="flex:1;">
+            <div class="data-item-main">${s.to || '(unknown)'}</div>
+            <div class="data-item-sub">${s.subject || ''}</div>
+            <div class="tracking-status">${opened}${clicked}</div>
+          </div>`;
+        sentEl.appendChild(item);
+      });
+    } catch (e) {
+      sentEl.innerHTML = '<div class="empty-state">⚠️ Backend unreachable: ' + e.message + '</div>';
+    }
+
+    await loadReplies();
+  }
+
+  document.getElementById('btn-refresh-dashboard').addEventListener('click', loadDashboard);
+
+  // ============ Gmail OAuth (Replies) ============
+  let gmailToken = null;
+  const connectGmailBtn = document.getElementById('btn-connect-gmail');
+  const gmailStatus = document.getElementById('gmail-auth-status');
+
+  function getGmailToken() {
+    return new Promise((resolve, reject) => {
+      chrome.identity.getAuthToken({ interactive: true }, (token) => {
+        if (chrome.runtime.lastError || !token) {
+          return reject(new Error(chrome.runtime.lastError?.message || 'Gmail auth failed'));
+        }
+        resolve(token);
+      });
+    });
+  }
+
+  if (connectGmailBtn) {
+    connectGmailBtn.addEventListener('click', async () => {
+      try {
+        gmailToken = await getGmailToken();
+        gmailStatus.textContent = '✅ Gmail connected. Loading replies…';
+        gmailStatus.style.display = 'block';
+        await loadReplies();
+      } catch (e) {
+        gmailStatus.textContent = '❌ ' + e.message;
+        gmailStatus.style.display = 'block';
+      }
+    });
+  }
+
+  async function loadReplies() {
+    const el = document.getElementById('dashboard-replies');
+    if (!gmailToken) return;
+    el.innerHTML = '<div class="empty-state">Loading replies…</div>';
+    try {
+      const listRes = await fetch(
+        'https://gmail.googleapis.com/gmail/v1/users/me/threads?labelIds=INBOX&maxResults=15',
+        { headers: { Authorization: 'Bearer ' + gmailToken } }
+      );
+      const list = await listRes.json();
+      const threads = list.threads || [];
+      if (threads.length === 0) {
+        el.innerHTML = '<div class="empty-state">No inbox threads.</div>';
+        return;
+      }
+      el.innerHTML = '';
+      for (const t of threads.slice(0, 15)) {
+        const thRes = await fetch(
+          `https://gmail.googleapis.com/gmail/v1/users/me/threads/${t.id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject`,
+          { headers: { Authorization: 'Bearer ' + gmailToken } }
+        );
+        const th = await thRes.json();
+        const msgs = th.messages || [];
+        const last = msgs[msgs.length - 1] || {};
+        const headers = last.payload?.headers || [];
+        const from = headers.find((h) => h.name === 'From')?.value || '';
+        const subject = headers.find((h) => h.name === 'Subject')?.value || '(no subject)';
+        const item = document.createElement('div');
+        item.className = 'data-item';
+        item.innerHTML = `<div style="flex:1;"><div class="data-item-main">${from}</div><div class="data-item-sub">${subject}</div></div>`;
+        el.appendChild(item);
+      }
+    } catch (e) {
+      el.innerHTML = '<div class="empty-state">⚠️ ' + e.message + '</div>';
+    }
+  }
 
   // --- Modal Logic ---
   const modal = document.getElementById('edit-modal');

@@ -102,10 +102,23 @@ const JFH_CONFIG = {
     PAUSED: 'paused',
   },
 
+  // ========== BACKEND (Nodemailer + Queue) ==========
+  BACKEND: {
+    DEFAULT_URL: 'http://localhost:3000',
+    DEFAULT_API_KEY: 'job-founder-hunter-dev-key',
+    SEND_ENDPOINT: '/api/send',
+    QUEUE_ENDPOINT: '/api/queue',
+    TRACK_ENDPOINT: '/api/tracking',
+    SENT_ENDPOINT: '/api/sent',
+    HEALTH_ENDPOINT: '/health',
+  },
+
   // ========== MESSAGE TYPES ==========
   MESSAGES: {
     // Popup → Service Worker
     START_SCRAPING: 'START_SCRAPING',
+    FIND_ALL_EMAILS: 'FIND_ALL_EMAILS',
+    SEND_ALL_BACKEND: 'SEND_ALL_BACKEND',
     PAUSE_PROCESS: 'PAUSE_PROCESS',
     RESUME_PROCESS: 'RESUME_PROCESS',
     STOP_PROCESS: 'STOP_PROCESS',

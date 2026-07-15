@@ -195,6 +195,77 @@ const JFH_Helpers = {
     if (!text || text.length <= maxLen) return text || '';
     return text.substring(0, maxLen) + '...';
   },
+
+  /**
+   * Send one or more emails through the self-hosted backend
+   * (Nodemailer + BullMQ queue). Returns the backend JSON response.
+   *
+   * @param {Array<{to,subject,body,replyTo?,fromName?}>|{to,subject,body,replyTo?,fromName?}} emails
+   * @param {{backendUrl:string, apiKey:string}} auth
+   * @returns {Promise<{success:boolean, queued?:number, jobs?:Array, message?:string}>}
+   */
+  async sendEmailViaBackend(emails, auth) {
+    const baseUrl = (auth.backendUrl || JFH_CONFIG.BACKEND.DEFAULT_URL).replace(/\/+$/, '');
+    const apiKey = auth.apiKey || JFH_CONFIG.BACKEND.DEFAULT_API_KEY;
+    const payload = Array.isArray(emails) ? { emails } : { emails: [emails] };
+
+    try {
+      const res = await fetch(baseUrl + JFH_CONFIG.BACKEND.SEND_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+        },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return { success: false, message: data.message || `Backend error (${res.status})` };
+      }
+      return data;
+    } catch (err) {
+      return { success: false, message: 'Backend unreachable: ' + err.message };
+    }
+  },
+
+  /**
+   * Check if the backend is reachable (health ping).
+   * @param {{backendUrl:string, apiKey:string}} auth
+   * @returns {Promise<boolean>}
+   */
+  async pingBackend(auth) {
+    const baseUrl = (auth.backendUrl || JFH_CONFIG.BACKEND.DEFAULT_URL).replace(/\/+$/, '');
+    const apiKey = auth.apiKey || JFH_CONFIG.BACKEND.DEFAULT_API_KEY;
+    try {
+      const res = await fetch(baseUrl + JFH_CONFIG.BACKEND.HEALTH_ENDPOINT, {
+        headers: { 'x-api-key': apiKey },
+      });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  },
+
+  /**
+   * Fetch open/click tracking status for a sent email from the backend.
+   * @param {string} trackId
+   * @param {{backendUrl:string, apiKey:string}} auth
+   * @returns {Promise<{success:boolean, status?:Object, message?:string}>}
+   */
+  async getTrackingStatus(trackId, auth) {
+    const baseUrl = (auth.backendUrl || JFH_CONFIG.BACKEND.DEFAULT_URL).replace(/\/+$/, '');
+    const apiKey = auth.apiKey || JFH_CONFIG.BACKEND.DEFAULT_API_KEY;
+    try {
+      const res = await fetch(baseUrl + JFH_CONFIG.BACKEND.TRACK_ENDPOINT + '/' + encodeURIComponent(trackId), {
+        headers: { 'x-api-key': apiKey },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return { success: false, message: data.message || `Backend error (${res.status})` };
+      return data;
+    } catch (err) {
+      return { success: false, message: 'Backend unreachable: ' + err.message };
+    }
+  },
 };
 
 // Make available globally

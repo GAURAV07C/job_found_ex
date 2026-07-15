@@ -9,9 +9,15 @@
     "tabs",
     "scripting",
     "notifications",
-    "unlimitedStorage"
+    "unlimitedStorage",
+    "identity"
   ],
   "host_permissions": [
+    "http://localhost/*",
+    "http://127.0.0.1/*",
+    "https://gmail.googleapis.com/*",
+    "https://www.googleapis.com/*",
+    "https://accounts.google.com/*",
     "https://*.ycombinator.com/*",
     "https://*.workatastartup.com/*",
     "https://www.wellfound.com/*",
@@ -27,6 +33,12 @@
   ],
   "background": {
     "service_worker": "background/service-worker.js"
+  },
+  "oauth2": {
+    "client_id": "REPLACE_WITH_YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/gmail.readonly"
+    ]
   },
   "action": {
     "default_popup": "popup/popup.html"

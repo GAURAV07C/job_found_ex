@@ -1,0 +1,48 @@
+# Render.com deployment for the Job Founder Hunter backend.
+# Push this repo to GitHub and create a new "Web Service" from render.yaml,
+# or paste these as Environment Variables in the Render dashboard.
+services:
+  - type: web
+    name: job-founder-hunter-backend
+    runtime: node
+    rootDir: server
+    plan: free
+    region: oregon
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "3000"
+      # A random API key is generated; copy it into the extension's Backend API Key field.
+      - key: API_KEY
+        generateValue: true
+      # Paste your Upstash Redis URL (rediss://default:...@xxx.upstash.io:6379)
+      - key: REDIS_URL
+        sync: false
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: "465"
+      - key: SMTP_SECURE
+        value: "true"
+      - key: SMTP_USER
+        value: gaurav07c@gmail.com
+      # Paste the 16-char Gmail App Password (no spaces)
+      - key: SMTP_PASS
+        sync: false
+      - key: MAIL_FROM
+        value: Gaurav Kumar <gaurav07c@gmail.com>
+      # After deploy, set this to your Render URL, e.g. https://jfh-backend.onrender.com
+      - key: PUBLIC_BASE_URL
+        sync: false
+      - key: QUEUE_MAX_PER_WINDOW
+        value: "1"
+      - key: QUEUE_WINDOW_MS
+        value: "5000"
+      - key: QUEUE_CONCURRENCY
+        value: "1"
+      - key: JOB_ATTEMPTS
+        value: "3"
+      - key: JOB_BACKOFF_MS
+        value: "10000"

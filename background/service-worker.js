@@ -12,9 +12,10 @@ console.log('[JFH] Service Worker loaded');
 // State
 let isRunning = false;
 let isPaused = false;
-let currentTask = null; // 'scraping' | 'emailing'
+let currentTask = null; // 'scraping' | 'emailing' | 'finding' | 'sending_backend'
 let targetBatch = [];
 let currentIndex = 0;
+let findOnlyMode = false; // when true, finding emails does not send
 let linkedInSafetyTimer = null; // Track safety timer to cancel on real email detection
 
 // ========== Message Handling ==========
@@ -29,6 +30,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     case 'START_BATCH_EMAIL':
       startBatchEmailing().then(sendResponse);
+      return true;
+
+    case 'FIND_ALL_EMAILS':
+      startFindingEmails().then(sendResponse);
+      return true;
+
+    case 'SEND_ALL_BACKEND':
+      startSendingViaBackend().then(sendResponse);
       return true;
 
     case 'SCRAPE_ALL_FOUNDERS':
@@ -376,6 +385,74 @@ async function handleScrapedData(data) {
   broadcastState();
 }
 
+// ========== Phase 1: Find Emails Only (no sending) ==========
+
+async function startFindingEmails() {
+  if (isRunning) return { error: 'Already running' };
+
+  const allFounders = await JFH_DB.getAllFounders();
+
+  // Only founders that still need an email discovered
+  targetBatch = allFounders.filter(
+    (f) => f.linkedinUrl && !f.contacted && !f.emailSearchAttempted && !f.email
+  );
+
+  if (targetBatch.length === 0) {
+    return { success: false, message: 'No pending founders need email finding.' };
+  }
+
+  isRunning = true;
+  isPaused = false;
+  currentTask = 'finding';
+  currentIndex = 0;
+  findOnlyMode = true;
+
+  broadcastState();
+
+  processNextEmail();
+
+  return { success: true, count: targetBatch.length };
+}
+
+// ========== Phase 3: Send All (via Backend queue) ==========
+
+async function startSendingViaBackend() {
+  if (isRunning) return { error: 'Already running' };
+
+  const settings = await JFH_DB.getAllSettings();
+  if (settings.emailActionMode !== 'backend') {
+    return { success: false, message: 'Please set Email Action to "Send via Backend" first (My Profile).' };
+  }
+
+  const allFounders = await JFH_DB.getAllFounders();
+
+  // Founders that have an email and were never contacted
+  let batch = allFounders.filter((f) => f.email && !f.contacted);
+
+  // Dedupe: skip emails we've already sent before
+  const sentLog = await JFH_DB.getAllEmailsSent();
+  const sentEmails = new Set(sentLog.map((e) => (e.email || '').toLowerCase()));
+  batch = batch.filter((f) => !sentEmails.has((f.email || '').toLowerCase()));
+
+  if (batch.length === 0) {
+    return { success: false, message: 'No unsent emails to send.' };
+  }
+
+  isRunning = true;
+  isPaused = false;
+  currentTask = 'sending_backend';
+  currentIndex = 0;
+  findOnlyMode = false;
+  targetBatch = batch;
+
+  broadcastState();
+
+  // All of these already have emails, so processNextEmail goes straight to backend send
+  processNextEmail();
+
+  return { success: true, count: batch.length };
+}
+
 // ========== Batch Emailing Flow (The Orchestrator) ==========
 
 async function startBatchEmailing() {
@@ -410,15 +487,24 @@ async function processNextEmail() {
   
   if (currentIndex >= targetBatch.length) {
     // Finished batch
+    const doneTask = currentTask;
     isRunning = false;
     currentTask = null;
-    broadcastState({ message: 'Batch completed!' });
-    
+
+    const completionMsg =
+      doneTask === 'finding'
+        ? 'Email finding completed! Review in the Data tab, then Send All via Backend.'
+        : doneTask === 'sending_backend'
+        ? 'All emails queued to backend for sending!'
+        : 'Batch completed!';
+
+    broadcastState({ message: completionMsg });
+
     chrome.notifications.create({
       type: 'basic',
       iconUrl: '../assets/icon128.png',
-      title: 'Batch Process Complete',
-      message: `Processed ${targetBatch.length} founders.`
+      title: 'Job Founder Hunter',
+      message: completionMsg
     });
     return;
   }
@@ -557,12 +643,19 @@ async function handleEmailDetected(data) {
     // Update DB
     await JFH_DB.updateFounderEmail(founderId, email);
     founder.email = email;
-    
-    // Broadcast state to refresh popup stats immediately
-    broadcastState({ currentFounder: `Drafting email for ${founder.name}` });
-    
-    // Proceed to compose
-    await openGmailCompose(founder);
+
+    if (findOnlyMode) {
+      // Phase 1: only collect emails, do not send
+      console.log(`[JFH] Email found for ${founder.name}: ${email}`);
+      broadcastState({ currentFounder: `Found email for ${founder.name}` });
+      currentIndex++;
+      setTimeout(processNextEmail, JFH_CONFIG.DELAYS.BETWEEN_LINKEDIN);
+    } else {
+      // Broadcast state to refresh popup stats immediately
+      broadcastState({ currentFounder: `Drafting email for ${founder.name}` });
+      // Proceed to compose
+      await openGmailCompose(founder);
+    }
   } else {
     // Mark as attempted so we don't try again next time
     const dbFounder = await JFH_DB.getFounder(founderId);
@@ -606,6 +699,43 @@ async function openGmailCompose(founder) {
     return;
   }
 
+  // === Mode: Backend (Nodemailer + Queue) ===
+  if (settings.emailActionMode === 'backend') {
+    const auth = {
+      backendUrl: settings.backendUrl || JFH_CONFIG.BACKEND.DEFAULT_URL,
+      apiKey: settings.backendApiKey || JFH_CONFIG.BACKEND.DEFAULT_API_KEY,
+    };
+    broadcastState({ currentFounder: `Queuing email for ${founder.name} (backend)...` });
+    const res = await JFH_Helpers.sendEmailViaBackend({
+      to: founder.email,
+      subject: emailContent.subject,
+      body: emailContent.body,
+      replyTo: settings.userEmail,
+      founderId: founder.id,
+    }, auth);
+
+    if (res.success) {
+      console.log(`[JFH] Queued email for ${founder.name} -> ${founder.email}`);
+      const trackId = res.jobs && res.jobs[0] ? res.jobs[0].trackId : null;
+      if (trackId) {
+        founder.trackingId = trackId;
+        try { await JFH_DB.updateFounder(founder); } catch (e) { console.warn('[JFH] could not save trackingId', e); }
+      }
+      await handleBackendSent(founder, founder.email, emailContent, settings);
+    } else {
+      console.error(`[JFH] Backend send failed for ${founder.name}:`, res.message);
+      // Fallback: open Gmail compose so the user can send manually
+      broadcastState({ currentFounder: `Backend failed for ${founder.name}, opening Gmail...` });
+      openGmailTab(founder, emailContent, settings);
+    }
+    return;
+  }
+
+  // === Mode: Gmail (draft / send) ===
+  openGmailTab(founder, emailContent, settings);
+}
+
+function openGmailTab(founder, emailContent, settings) {
   // Open Gmail tab with pre-filled parameters (100% reliable, no DOM typing needed)
   const encodedTo = encodeURIComponent(founder.email);
   const encodedSubject = encodeURIComponent(emailContent.subject);
@@ -633,6 +763,22 @@ async function openGmailCompose(founder) {
     .then(() => console.log('[JFH] Successfully attached tracker to Gmail'))
     .catch(err => console.warn('[JFH] Could not attach Gmail tracker (maybe already sent):', err));
   });
+}
+
+// Called when an email is successfully queued via the backend
+async function handleBackendSent(founder, email, emailContent, settings) {
+  await JFH_DB.markFounderContacted(founder.id);
+  await JFH_DB.logEmailSent({
+    founderId: founder.id,
+    founderName: founder.name,
+    companyName: founder.companyName,
+    email,
+    subject: emailContent?.subject || '',
+    templateUsed: settings?.selectedTemplate || 'professional',
+    trackingId: founder.trackingId || '',
+  });
+  currentIndex++;
+  setTimeout(processNextEmail, JFH_CONFIG.DELAYS.BETWEEN_EMAILS);
 }
 
 // --- Step 3: Bulk Sending Drafts Flow ---

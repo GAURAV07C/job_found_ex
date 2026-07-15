@@ -23,6 +23,7 @@
     <nav class="tabs">
       <button class="tab-btn active" data-tab="home">Home</button>
       <button class="tab-btn" data-tab="data">Data</button>
+      <button class="tab-btn" data-tab="dashboard">Dashboard</button>
       <button class="tab-btn" data-tab="profile">My Profile</button>
     </nav>
 
@@ -84,7 +85,7 @@
 
         <div class="action-panel active-panel">
           <h3>3. Automate Outreach</h3>
-          <p class="subtitle">Will process pending founders, find emails, and open Gmail.</p>
+          <p class="subtitle">3 steps: find emails → review in Data tab → send via backend.</p>
 
           <div class="progress-container" id="batch-progress-container" style="display: none;">
             <div class="progress-header">
@@ -97,13 +98,15 @@
           </div>
 
           <div class="main-actions">
-            <button id="btn-start-batch" class="btn primary full-width">Start Batch Process</button>
+            <button id="btn-find-emails" class="btn secondary full-width">🔍 Step 1: Find Emails (LinkedIn)</button>
+            <button id="btn-send-backend" class="btn primary full-width mt-10">🚀 Step 2: Send All via Backend</button>
             <div class="control-buttons" style="display: none;" id="batch-controls">
               <button id="btn-pause-batch" class="btn warning">Pause</button>
               <button id="btn-stop-batch" class="btn danger">Stop</button>
             </div>
+            <button id="btn-start-batch" class="btn outline full-width mt-10">⚙️ Legacy: Find + Send (Gmail)</button>
             <button id="btn-send-drafts" class="btn secondary full-width mt-10"
-              style="border: 1px solid var(--primary);">🚀 Send All Pending Drafts</button>
+              style="border: 1px solid var(--primary);">📨 Send All Pending Gmail Drafts</button>
           </div>
         </div>
       </section>
@@ -113,6 +116,12 @@
         <div class="data-header">
           <h3>Database Overview</h3>
           <button id="btn-export-csv" class="btn small outline">Export CSV</button>
+        </div>
+
+        <div class="outreach-actions" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;">
+          <button id="btn-data-find-emails" class="btn small secondary">🔍 Find Emails</button>
+          <button id="btn-data-send-backend" class="btn small primary">🚀 Send All (Backend)</button>
+          <button id="btn-refresh-tracking" class="btn small outline">🔄 Refresh Tracking</button>
         </div>
 
         <div class="data-list-container">
@@ -126,6 +135,35 @@
           </div>
         </div>
         <button id="btn-clear-db" class="btn small danger outline mt-10">Clear All Data</button>
+      </section>
+
+      <!-- Dashboard Tab -->
+      <section id="tab-dashboard" class="tab-content">
+        <div class="data-header">
+          <h3>📊 Outreach Dashboard</h3>
+          <button id="btn-refresh-dashboard" class="btn small outline">🔄 Refresh</button>
+        </div>
+
+        <div id="dashboard-backend-note" class="subtitle">
+          Enter your Backend URL in <b>My Profile</b> to load sent emails, open/click tracking,
+          and Gmail replies.
+        </div>
+
+        <div class="dashboard-section">
+          <h4>📧 Sent & Tracking</h4>
+          <div id="dashboard-sent" class="data-list">
+            <div class="empty-state">Loading…</div>
+          </div>
+        </div>
+
+        <div class="dashboard-section">
+          <h4>💬 Replies (Gmail)</h4>
+          <button id="btn-connect-gmail" class="btn small secondary">🔗 Connect Gmail</button>
+          <span id="gmail-auth-status" class="subtitle" style="display:none;"></span>
+          <div id="dashboard-replies" class="data-list" style="margin-top:8px;">
+            <div class="empty-state">Connect Gmail to see replies.</div>
+          </div>
+        </div>
       </section>
 
       <!-- My Profile Tab -->
@@ -189,10 +227,29 @@ JavaScript, TypeScript, Node.js, React.js, Next.js, Express.js, NestJS, REST API
             <div class="form-group">
               <label>On Email Found, what should the bot do?</label>
               <select id="set-action-mode">
-                <option value="draft">💾 Save to Drafts (Recommended)</option>
-                <option value="send">🚀 Auto-Send Directly (Risky)</option>
+                <option value="draft">💾 Save to Drafts (Gmail)</option>
+                <option value="send">🚀 Auto-Send Directly (Gmail)</option>
+                <option value="backend">🖥️ Send via Backend (Nodemailer + Queue)</option>
               </select>
             </div>
+            <p class="subtitle" id="action-mode-hint">Backend mode sends real emails directly through your own mail server, rate-limited by a queue. Configure it below.</p>
+          </div>
+
+          <div class="profile-section">
+            <h4>🖥️ Backend Mail Server</h4>
+            <p class="subtitle">Used when "Send via Backend" is selected above. Run the included Node server (server/).</p>
+            <div class="form-row">
+              <div class="form-group half">
+                <label>Backend URL</label>
+                <input type="url" id="set-backend-url" placeholder="http://localhost:3000">
+              </div>
+              <div class="form-group half">
+                <label>API Key</label>
+                <input type="text" id="set-backend-key" placeholder="job-founder-hunter-dev-key">
+              </div>
+            </div>
+            <button type="button" id="btn-test-backend" class="btn small outline">Test Backend Connection</button>
+            <span id="backend-test-status" class="subtitle" style="display:none;"></span>
           </div>
 
           <div class="profile-section">
@@ -224,6 +281,9 @@ JavaScript, TypeScript, Node.js, React.js, Next.js, Express.js, NestJS, REST API
 
             <button type="button" id="btn-preview-email" class="btn secondary full-width outline">👁️ Preview Generated
               Email</button>
+            <button type="button" id="btn-test-mail" class="btn secondary full-width outline mt-10">📧 Send Test Mail to
+              Myself</button>
+            <div id="test-mail-status" class="subtitle" style="display:none; color:var(--primary);"></div>
             <div id="email-preview-box" class="preview-box" style="display:none;"></div>
           </div>
 
