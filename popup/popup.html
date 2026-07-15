@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Job Founder Hunter</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header>
+      <div class="logo">
+        <span class="icon">🎯</span>
+        <h1>Job Founder Hunter</h1>
+      </div>
+      <div class="version">v1.0.0</div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="tabs">
+      <button class="tab-btn active" data-tab="home">Home</button>
+      <button class="tab-btn" data-tab="data">Data</button>
+      <button class="tab-btn" data-tab="profile">My Profile</button>
+    </nav>
+
+    <!-- Content Area -->
+    <main class="content">
+
+      <!-- Home Tab -->
+      <section id="tab-home" class="tab-content active">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <span class="stat-value" id="stat-companies">0</span>
+            <span class="stat-label">Companies</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-value" id="stat-founders">0</span>
+            <span class="stat-label">Founders Found</span>
+          </div>
+          <div class="stat-card warning">
+            <span class="stat-value" id="stat-with-email">0</span>
+            <span class="stat-label">With Email</span>
+          </div>
+          <div class="stat-card primary">
+            <span class="stat-value" id="stat-contacted">0</span>
+            <span class="stat-label">Contacted</span>
+          </div>
+        </div>
+
+        <div class="action-panel">
+          <h3>1. Scrape Leads & Auto-Apply</h3>
+          <div class="scrape-buttons" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+            <button id="btn-scrape-was-jobs" class="btn primary" style="grid-column: span 2;">Open WaaS SWE Jobs (Auto-Apply)</button>
+            <button id="btn-scrape-was-companies" class="btn secondary">WaaS Companies</button>
+            <button id="btn-scrape-yc" class="btn secondary">YC Directory</button>
+            <button id="btn-scrape-wf" class="btn secondary">Wellfound</button>
+            <button id="btn-scrape-ph" class="btn secondary">Product Hunt</button>
+            <button id="btn-scrape-cb" class="btn secondary">Crunchbase</button>
+            <button id="btn-scrape-ts" class="btn secondary">Techstars</button>
+            <button id="btn-scrape-500" class="btn secondary">500 Global</button>
+            <button id="btn-scrape-antler" class="btn secondary">Antler</button>
+            <button id="btn-scrape-remoteok" class="btn secondary">Remote OK</button>
+            <button id="btn-scrape-otta" class="btn secondary">Otta</button>
+          </div>
+        </div>
+
+        <div class="action-panel">
+          <h3>2. Find Founders from Companies</h3>
+          <p class="subtitle">Visit each company page and extract founder LinkedIn profiles.</p>
+          <div class="progress-container" id="founders-progress-container" style="display: none;">
+            <div class="progress-header">
+              <span id="founders-status-text">Scanning companies...</span>
+              <span id="founders-progress-text">0%</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" id="founders-progress-fill"></div>
+            </div>
+          </div>
+          <button id="btn-find-founders" class="btn secondary full-width">🔍 Find All Founders</button>
+        </div>
+
+        <div class="action-panel active-panel">
+          <h3>3. Automate Outreach</h3>
+          <p class="subtitle">Will process pending founders, find emails, and open Gmail.</p>
+
+          <div class="progress-container" id="batch-progress-container" style="display: none;">
+            <div class="progress-header">
+              <span id="batch-status-text">Processing...</span>
+              <span id="batch-progress-text">0%</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" id="batch-progress-fill"></div>
+            </div>
+          </div>
+
+          <div class="main-actions">
+            <button id="btn-start-batch" class="btn primary full-width">Start Batch Process</button>
+            <div class="control-buttons" style="display: none;" id="batch-controls">
+              <button id="btn-pause-batch" class="btn warning">Pause</button>
+              <button id="btn-stop-batch" class="btn danger">Stop</button>
+            </div>
+            <button id="btn-send-drafts" class="btn secondary full-width mt-10"
+              style="border: 1px solid var(--primary);">🚀 Send All Pending Drafts</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Data Tab -->
+      <section id="tab-data" class="tab-content">
+        <div class="data-header">
+          <h3>Database Overview</h3>
+          <button id="btn-export-csv" class="btn small outline">Export CSV</button>
+        </div>
+
+        <div class="data-list-container">
+          <div class="data-tabs">
+            <button class="data-tab-btn active" data-view="founders">Founders</button>
+            <button class="data-tab-btn" data-view="companies">Companies</button>
+          </div>
+          <div class="data-list" id="data-list-view">
+            <!-- Populated by JS -->
+            <div class="empty-state">Loading data...</div>
+          </div>
+        </div>
+        <button id="btn-clear-db" class="btn small danger outline mt-10">Clear All Data</button>
+      </section>
+
+      <!-- My Profile Tab -->
+      <section id="tab-profile" class="tab-content">
+        <div class="profile-header">
+          <h3>Your Master Profile</h3>
+          <p class="subtitle">Verify and edit your details before outreach.</p>
+        </div>
+
+        <form id="profile-form">
+          <div class="profile-section">
+            <h4>Personal Details</h4>
+            <div class="form-row">
+              <div class="form-group half">
+                <label>Full Name</label>
+                <input type="text" id="set-name" value="Gaurav Kumar" required>
+              </div>
+              <div class="form-group half">
+                <label>Email Address</label>
+                <input type="email" id="set-email" value="gaurav07c@gmail.com" required>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Target Job Title</label>
+              <input type="text" id="set-position" value="Full Stack Developer" required>
+            </div>
+            <div class="form-group">
+              <label>Core Skills (Used in emails)</label>
+              <textarea id="set-skills" rows="3" required>
+JavaScript, TypeScript, Node.js, React.js, Next.js, Express.js, NestJS, REST APIs, WebSocket, WebRTC, PostgreSQL, Prisma, Redis, MongoDB, Mongoose, Tailwind CSS, HTML, CSS, Git, GitHub, Docker, Turborepo, Google Apps Script, AI Integration, Authentication & Authorization, System Design
+</textarea>
+            </div>
+          </div>
+
+          <div class="profile-section">
+            <h4>Links & Portfolio</h4>
+            <div class="form-row">
+              <div class="form-group half">
+                <label>Resume Link</label>
+                <input type="url" id="set-resume" value="https://resume-lemon-rho.vercel.app/" required>
+              </div>
+              <div class="form-group half">
+                <label>Portfolio Website</label>
+                <input type="url" id="set-portfolio" value="https://gaurav07c.vercel.app" required>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group half">
+                <label>GitHub Profile</label>
+                <input type="url" id="set-github" value="https://github.com/gaurav07c">
+              </div>
+              <div class="form-group half">
+                <label>LinkedIn Profile</label>
+                <input type="url" id="set-linkedin" value="https://www.linkedin.com/in/gaurav07c/">
+              </div>
+            </div>
+          </div>
+
+          <div class="profile-section">
+            <h4>Email Action Settings</h4>
+            <div class="form-group">
+              <label>On Email Found, what should the bot do?</label>
+              <select id="set-action-mode">
+                <option value="draft">💾 Save to Drafts (Recommended)</option>
+                <option value="send">🚀 Auto-Send Directly (Risky)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="profile-section">
+            <h4>Outreach Template</h4>
+            <div class="form-group">
+              <label>Select Template</label>
+              <select id="set-template">
+                <!-- Populated by JS -->
+              </select>
+            </div>
+
+            <!-- Custom Template Builder -->
+            <div style="margin:12px 0; padding:10px; border-radius:6px; background:rgba(0,0,0,0.3);">
+              <label style="font-size:11px; color:var(--primary); font-weight:600; cursor:pointer; display:block;"
+                id="toggle-custom-template">
+                + Create Custom Template
+              </label>
+              <div id="custom-template-builder" style="display:none; margin-top:8px;">
+                <input type="text" id="custom-tpl-name" placeholder="Template Name (e.g., My Cold Email)"
+                  style="margin-bottom:8px;">
+                <input type="text" id="custom-tpl-subject" placeholder="Subject: Hi {{founder_name}}"
+                  style="margin-bottom:8px;">
+                <textarea id="custom-tpl-body" rows="4"
+                  placeholder="Body: I saw {{company_name}} and... Use {{your_skills}}, {{resume_link}}, {{founder_email}}..."
+                  style="margin-bottom:8px;"></textarea>
+                <button type="button" id="btn-save-custom-tpl" class="btn small primary outline">Save to List</button>
+              </div>
+            </div>
+
+            <button type="button" id="btn-preview-email" class="btn secondary full-width outline">👁️ Preview Generated
+              Email</button>
+            <div id="email-preview-box" class="preview-box" style="display:none;"></div>
+          </div>
+
+          <div class="profile-section">
+            <h4>📝 Personal Info</h4>
+            <div class="form-group">
+              <label>Years of Experience</label>
+              <input type="text" id="set-experience" placeholder="e.g. 2 years, fresher, 1.5 years">
+            </div>
+            <div class="form-group">
+              <label>Availability / Notice Period</label>
+              <input type="text" id="set-availability" placeholder="e.g. Immediately, 2 weeks notice">
+            </div>
+            <div class="form-group">
+              <label>Work Mode Preference</label>
+              <select id="set-work-mode">
+                <option value="Remote">Remote</option>
+                <option value="Hybrid">Hybrid</option>
+                <option value="Onsite">Onsite</option>
+                <option value="Remote or Hybrid">Remote or Hybrid</option>
+                <option value="Open to all">Open to all</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Expected Salary / Compensation</label>
+              <input type="text" id="set-salary" placeholder="e.g. $80k-100k, Negotiable, ₹15-20 LPA">
+            </div>
+          </div>
+
+          <div class="profile-section">
+            <h4>🚀 WaaS "Reach Out" Message Template</h4>
+            <p class="subtitle">This message is auto-filled when applying on WorkAtAStartup. You can edit it freely. Use <code style="color:var(--primary)">{{company}}</code> and <code style="color:var(--primary)">{{role}}</code> as placeholders.</p>
+            <div class="form-group">
+              <label>Frontend / React Roles</label>
+              <textarea id="was-tpl-frontend" rows="4" placeholder="Message for frontend roles..."></textarea>
+            </div>
+            <div class="form-group">
+              <label>Backend / API / Node.js Roles</label>
+              <textarea id="was-tpl-backend" rows="4" placeholder="Message for backend roles..."></textarea>
+            </div>
+            <div class="form-group">
+              <label>Full Stack / Software Engineer Roles</label>
+              <textarea id="was-tpl-fullstack" rows="4" placeholder="Message for full stack roles..."></textarea>
+            </div>
+            <div class="form-group">
+              <label>General / Other Roles (Default)</label>
+              <textarea id="was-tpl-default" rows="4" placeholder="Default message for any other role..."></textarea>
+            </div>
+          </div>
+
+          <div class="profile-section">
+            <h4>❓ Common Application Q&amp;A</h4>
+            <p class="subtitle">These answers are auto-filled if an application form asks these questions.</p>
+            <div class="form-group">
+              <label>Why do you want to work here? / What interests you?</label>
+              <textarea id="qa-why-company" rows="3" placeholder="I'm excited about the problem you're solving..."></textarea>
+            </div>
+            <div class="form-group">
+              <label>Tell us about yourself</label>
+              <textarea id="qa-about-me" rows="3" placeholder="I'm a full-stack MERN developer with..."></textarea>
+            </div>
+            <div class="form-group">
+              <label>What are you looking for in your next role?</label>
+              <textarea id="qa-looking-for" rows="3" placeholder="I'm looking for a fast-paced startup where I can..."></textarea>
+            </div>
+            <div class="form-group">
+              <label>What is your proudest achievement?</label>
+              <textarea id="qa-achievement" rows="3" placeholder="I built..."></textarea>
+            </div>
+            <div class="form-group">
+              <label>Why are you leaving your current job / Why do you want to switch?</label>
+              <textarea id="qa-why-leaving" rows="3" placeholder="I'm looking for a new challenge where..."></textarea>
+            </div>
+          </div>
+
+          <button type="submit" class="btn primary full-width">Save &amp; Verify Profile</button>
+        </form>
+        <div id="profile-save-msg" class="success-msg" style="display:none;">Profile Verified and Saved!</div>
+      </section>
+
+    </main>
+
+    <!-- Edit Founder Modal -->
+    <div id="edit-modal" class="modal" style="display:none;">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Edit Founder</h3>
+          <button id="close-modal-btn" class="close-btn">&times;</button>
+        </div>
+        <form id="edit-founder-form">
+          <input type="hidden" id="edit-id">
+          <div class="form-group">
+            <label>Name</label>
+            <input type="text" id="edit-name" required>
+          </div>
+          <div class="form-group">
+            <label>Title & Company</label>
+            <div style="display:flex; gap:8px;">
+              <input type="text" id="edit-title" placeholder="Title" style="flex:1;">
+              <input type="text" id="edit-company" placeholder="Company" style="flex:1;" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="edit-email" placeholder="No email found yet">
+          </div>
+          <div class="form-group">
+            <label>LinkedIn URL</label>
+            <input type="url" id="edit-linkedin" required>
+          </div>
+          <div class="form-group" style="display:flex; align-items:center; gap:8px;">
+            <input type="checkbox" id="edit-contacted" style="width:auto; margin:0;">
+            <label for="edit-contacted" style="margin:0;">Mark as Contacted</label>
+          </div>
+          <button type="submit" class="btn primary full-width" style="margin-top:12px;">Save Changes</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="../utils/constants.js"></script>
+  <script src="../utils/helpers.js"></script>
+  <script src="../templates/email-templates.js"></script>
+  <script src="../database/db.js"></script>
+  <script src="popup.js"></script>
+</body>
+
+</html>
