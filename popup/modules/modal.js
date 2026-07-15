@@ -2,7 +2,7 @@
  * Job Founder Hunter - Modal Module
  */
 
-function initModal({ loadDataView, updateStats }) {
+function initModal({ loadDataView, updateStats, refreshBackendSendButton }) {
   const modal = document.getElementById('edit-modal');
   const closeBtn = document.getElementById('close-modal-btn');
   const editForm = document.getElementById('edit-founder-form');
@@ -58,6 +58,7 @@ function initModal({ loadDataView, updateStats }) {
     modal.style.display = 'none';
     if (loadDataView) loadDataView();
     if (updateStats) updateStats();
+    if (refreshBackendSendButton) refreshBackendSendButton();
   });
 }
 

@@ -162,8 +162,8 @@ function initHome({ updateStats, updateUIState, runSwTask, refreshBackendSendBut
 
       const total = withEmail.length;
       const label = `🚀 Step 2: Send All via Backend (${total} with email, ${eligible} new, ${contacted} contacted, ${alreadySent} already sent)`;
-      if (sendBtn) sendBtn.textContent = label;
-      if (dataSendBtn) dataSendBtn.textContent = `🚀 Send All (Backend) (${total})`;
+      if (sendBtn) { sendBtn.textContent = label; sendBtn.disabled = total === 0; }
+      if (dataSendBtn) { dataSendBtn.textContent = `🚀 Send All (Backend) (${total})`; dataSendBtn.disabled = total === 0; }
     } catch (e) {
       console.warn('[UI] could not refresh backend send count:', e);
     }

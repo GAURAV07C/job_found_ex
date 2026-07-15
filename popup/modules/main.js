@@ -159,7 +159,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   JFH_Home.initHome({ updateStats, updateUIState, runSwTask, refreshBackendSendButton });
   JFH_Data.initData({ loadDataView });
-  JFH_ModalModule.initModal({ loadDataView, updateStats });
+  JFH_ModalModule.initModal({ loadDataView, updateStats, refreshBackendSendButton });
   JFH_DashboardModule.initDashboard();
   JFH_Profile.initProfile({ updateStats, refreshBackendSendButton });
 

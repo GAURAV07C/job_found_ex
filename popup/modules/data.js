@@ -142,6 +142,7 @@ function initData({ loadDataView }) {
       e.target.classList.add('active');
       currentFilter = e.target.dataset.filter;
       loadDataView(currentDataView, currentFilter);
+      if (window.__JFH_REFRESH_BACKEND_COUNT) window.__JFH_REFRESH_BACKEND_COUNT();
     });
   });
 
