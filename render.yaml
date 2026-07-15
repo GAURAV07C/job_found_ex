@@ -14,9 +14,10 @@ services:
     envVars:
       - key: PORT
         value: "3000"
-      # A random API key is generated; copy it into the extension's Backend API Key field.
+      # Fixed key so it matches the extension's default "Backend API Key" field.
+      # To rotate later, change it HERE and in the extension profile (both must match).
       - key: API_KEY
-        generateValue: true
+        value: "job-founder-hunter-dev-key"
       # Paste your Upstash Redis URL (rediss://default:...@xxx.upstash.io:6379)
       - key: REDIS_URL
         sync: false
