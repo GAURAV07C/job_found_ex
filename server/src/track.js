@@ -43,7 +43,9 @@ function buildTrackedHtml(body, trackId) {
   });
 
   const html = (trackedText || '').replace(/\n/g, '<br>');
-  return `${html}<br><img src="${openPixel}" width="1" height="1" alt="" style="display:none" />`;
+  // Use a transparent spacer GIF instead of display:none (Gmail strips display:none images).
+  const spacer = `data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7`;
+  return `${html}<br><img src="${spacer}" width="1" height="1" border="0" alt="" /><img src="${openPixel}" width="1" height="1" border="0" alt="" style="border:0; outline:none; text-decoration:none;" />`;
 }
 
 async function recordOpen(trackId) {

@@ -283,6 +283,10 @@ JavaScript, TypeScript, Node.js, React.js, Next.js, Express.js, NestJS, REST API
               Email</button>
             <button type="button" id="btn-test-mail" class="btn secondary full-width outline mt-10">📧 Send Test Mail to
               Myself</button>
+            <div style="display:flex; gap:6px; align-items:center; margin-top:8px;">
+              <input type="email" id="test-mail-to" placeholder="Or send test to another email..." style="flex:1; padding:8px; border-radius:4px; border:1px solid var(--border-color); background:rgba(0,0,0,0.3); color:var(--text-main);">
+              <button type="button" id="btn-test-mail-custom" class="btn small secondary outline">Send</button>
+            </div>
             <div id="test-mail-status" class="subtitle" style="display:none; color:var(--primary);"></div>
             <div id="email-preview-box" class="preview-box" style="display:none;"></div>
           </div>

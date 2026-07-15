@@ -424,8 +424,12 @@ async function startSendingViaBackend() {
   if (isRunning) return { error: 'Already running' };
 
   const settings = await JFH_DB.getAllSettings();
-  if (settings.emailActionMode !== 'backend') {
-    return { success: false, message: 'Please set Email Action to "Send via Backend" first (My Profile).' };
+
+  // Backend URL + API key required; emailActionMode hint is optional.
+  const backendUrl = settings.backendUrl || JFH_CONFIG.BACKEND.DEFAULT_URL;
+  const backendApiKey = settings.backendApiKey || JFH_CONFIG.BACKEND.DEFAULT_API_KEY;
+  if (!backendUrl || !backendApiKey) {
+    return { success: false, message: 'Backend URL/API Key missing. Set them in My Profile → Backend Mail Server and Test.' };
   }
 
   const allFounders = await JFH_DB.getAllFounders();

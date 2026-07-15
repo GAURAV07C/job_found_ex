@@ -411,6 +411,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const subject = `[TEST] ${rendered.subject}`;
     const body = rendered.body;
 
+    // Always send through the backend queue (with open + click tracking).
     const auth = {
       backendUrl: document.getElementById('set-backend-url').value || JFH_CONFIG.BACKEND.DEFAULT_URL,
       apiKey: document.getElementById('set-backend-key').value || JFH_CONFIG.BACKEND.DEFAULT_API_KEY,
@@ -429,6 +430,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (res.success) {
       testMailStatus.textContent = `✅ Test mail queued! (${res.queued} email(s)) Tracking active. It will arrive at ${userEmail}.`;
     } else {
+      // Fallback: open Gmail compose so the user can send manually
       console.warn('[test mail] backend failed, falling back to Gmail:', res.message);
       const encodedTo = encodeURIComponent(userEmail);
       const encodedSubject = encodeURIComponent(subject);
@@ -439,6 +441,59 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     testMailStatus.style.display = 'block';
   });
+
+  // Custom test email input
+  const testMailCustomBtn = document.getElementById('btn-test-mail-custom');
+  const testMailToInput = document.getElementById('test-mail-to');
+  if (testMailCustomBtn && testMailToInput) {
+    testMailCustomBtn.addEventListener('click', async () => {
+      const to = testMailToInput.value.trim();
+      if (!to || !to.includes('@')) {
+        testMailStatus.textContent = '⚠️ Please enter a valid email address.';
+        testMailStatus.style.display = 'block';
+        return;
+      }
+      const templateId = document.getElementById('set-template').value;
+      const dummyData = {
+        founder_name: 'Alex',
+        company_name: 'Acme Startup',
+        founder_title: 'CEO',
+        your_name: document.getElementById('set-name').value || '[Your Name]',
+        your_skills: document.getElementById('set-skills').value || '[Skills]',
+        resume_link: document.getElementById('set-resume').value || '[Resume]',
+        portfolio_link: document.getElementById('set-portfolio').value || '[Portfolio]',
+        github_link: document.getElementById('set-github').value || '[GitHub]',
+        linkedin_link: document.getElementById('set-linkedin').value || '[LinkedIn]',
+        position: document.getElementById('set-position').value || '[Position]',
+        your_email: document.getElementById('set-email').value || '[Your Email]'
+      };
+      const rendered = JFH_Templates.render(templateId, dummyData);
+      if (!rendered) {
+        testMailStatus.textContent = '⚠️ Could not render template.';
+        testMailStatus.style.display = 'block';
+        return;
+      }
+
+      const subject = `[TEST] ${rendered.subject}`;
+      const body = rendered.body;
+      const auth = {
+        backendUrl: document.getElementById('set-backend-url').value || JFH_CONFIG.BACKEND.DEFAULT_URL,
+        apiKey: document.getElementById('set-backend-key').value || JFH_CONFIG.BACKEND.DEFAULT_API_KEY,
+      };
+      testMailStatus.textContent = '⏳ Sending test mail to ' + to + '...';
+      testMailStatus.style.display = 'block';
+      const res = await JFH_Helpers.sendEmailViaBackend(
+        { to, subject, body, replyTo: document.getElementById('set-email').value },
+        auth
+      );
+      if (res.success) {
+        testMailStatus.textContent = `✅ Test mail queued to ${to}! (${res.queued} email(s)) Tracking active.`;
+      } else {
+        testMailStatus.textContent = '❌ ' + (res.message || 'Backend send failed.');
+      }
+      testMailStatus.style.display = 'block';
+    });
+  }
 
   // Test Backend Connection
   const testBackendBtn = document.getElementById('btn-test-backend');
@@ -711,12 +766,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         const opened = s.opened ? `📖 Opened (${s.openCount})` : '📭 Not opened';
         const clicked = s.clicked ? `  •  🔗 Clicked (${s.clickCount})` : '';
         const errLine = s.error ? `<div class="tracking-status" style="color:#ff6b6b;">${s.error}</div>` : '';
+        const pixelLine = s.trackId
+          ? `<div class="tracking-status"><a href="${auth.backendUrl.replace(/\/+$/, '')}/track/open/${s.trackId}.png" target="_blank" style="color:var(--primary);">🔍 Test pixel: ${s.trackId}.png</a></div>`
+          : '';
         item.innerHTML = `
           <div style="flex:1;">
             <div class="data-item-main">${s.to || '(unknown)'}</div>
             <div class="data-item-sub">${s.subject || ''}</div>
             <div class="tracking-status">${statusBadge}${status === 'sent' ? '  •  ' + opened + clicked : ''}</div>
             ${errLine}
+            ${pixelLine}
           </div>`;
         sentEl.appendChild(item);
       });
