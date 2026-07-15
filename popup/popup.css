@@ -506,3 +506,24 @@ input:focus, textarea:focus, select:focus {
   font-size: 11px;
   color: var(--secondary);
 }
+.data-filters {
+  margin: 6px 0;
+}
+.filter-btn {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  border-radius: 4px;
+  padding: 3px 10px;
+  font-size: 11px;
+  cursor: pointer;
+}
+.filter-btn:hover {
+  background: rgba(255,255,255,0.06);
+  color: var(--text-main);
+}
+.filter-btn.active {
+  background: rgba(255,255,255,0.1);
+  color: var(--text-main);
+  border-color: var(--primary);
+}

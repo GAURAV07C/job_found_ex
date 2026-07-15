@@ -124,16 +124,22 @@
           <button id="btn-refresh-tracking" class="btn small outline">🔄 Refresh Tracking</button>
         </div>
 
-        <div class="data-list-container">
-          <div class="data-tabs">
-            <button class="data-tab-btn active" data-view="founders">Founders</button>
-            <button class="data-tab-btn" data-view="companies">Companies</button>
+          <div class="data-list-container">
+            <div class="data-tabs">
+              <button class="data-tab-btn active" data-view="founders">Founders</button>
+              <button class="data-tab-btn" data-view="companies">Companies</button>
+            </div>
+            <div class="data-sub-tabs" style="display:flex; gap:4px; margin:6px 0; flex-wrap:wrap;">
+              <button class="filter-btn active" data-filter="all">All</button>
+              <button class="filter-btn" data-filter="pending">⏳ Pending</button>
+              <button class="filter-btn" data-filter="email-found">📧 Email Found</button>
+              <button class="filter-btn" data-filter="opened">📖 Opened</button>
+            </div>
+            <div class="data-list" id="data-list-view">
+              <!-- Populated by JS -->
+              <div class="empty-state">Loading data...</div>
+            </div>
           </div>
-          <div class="data-list" id="data-list-view">
-            <!-- Populated by JS -->
-            <div class="empty-state">Loading data...</div>
-          </div>
-        </div>
         <button id="btn-clear-db" class="btn small danger outline mt-10">Clear All Data</button>
       </section>
 

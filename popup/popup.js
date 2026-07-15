@@ -558,12 +558,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // --- Data Tab Logic ---
   let currentDataView = 'founders';
-  
+  let currentFilter = 'all';
+
   document.querySelectorAll('.data-tab-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       document.querySelectorAll('.data-tab-btn').forEach(b => b.classList.remove('active'));
       e.target.classList.add('active');
       currentDataView = e.target.dataset.view;
+      loadDataView();
+    });
+  });
+
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+      currentFilter = e.target.dataset.filter;
       loadDataView();
     });
   });
@@ -576,6 +586,21 @@ document.addEventListener('DOMContentLoaded', async () => {
       const founders = await JFH_DB.getAllFounders();
       if (founders.length === 0) {
         listEl.innerHTML = '<div class="empty-state">No founders scraped yet.</div>';
+        return;
+      }
+
+      // Apply filter
+      let filtered = founders;
+      if (currentFilter === 'pending') {
+        filtered = founders.filter(f => !f.email && !f.contacted);
+      } else if (currentFilter === 'email-found') {
+        filtered = founders.filter(f => f.email && !f.contacted);
+      } else if (currentFilter === 'opened') {
+        filtered = founders.filter(f => f.contacted || (f.trackingId && f.openCount > 0));
+      }
+
+      if (filtered.length === 0) {
+        listEl.innerHTML = '<div class="empty-state">No founders match this filter.</div>';
         return;
       }
       
@@ -605,7 +630,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         apiKey: (await JFH_DB.getAllSettings()).backendApiKey || JFH_CONFIG.BACKEND.DEFAULT_API_KEY,
       };
 
-      founders.forEach(f => {
+      filtered.forEach(f => {
         const item = document.createElement('div');
         item.className = 'data-item';
 
@@ -658,16 +683,30 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
 
       // Fetch open/click tracking status for sent emails
-      for (const f of founders) {
+      // Sort: opened emails first, then by open count descending
+      const foundersForTracking = [...founders].sort((a, b) => {
+        const aOpened = a.openCount || 0;
+        const bOpened = b.openCount || 0;
+        return bOpened - aOpened;
+      });
+
+      for (const f of foundersForTracking) {
         if (!f.trackingId) continue;
         const el = document.getElementById('track-' + f.id);
         if (!el) continue;
         const res = await JFH_Helpers.getTrackingStatus(f.trackingId, backendAuth);
         if (res.success && res.status) {
           const s = res.status;
-          const parts = [s.opened ? `📖 Opened (${s.openCount})` : `📭 Not opened`];
-          if (s.clicked) parts.push(`🔗 Clicked (${s.clickCount})`);
-          el.textContent = parts.join('  •  ');
+          let statusText = '';
+          if (s.opened) {
+            statusText = `📖 Opened ${s.openCount > 1 ? '(' + s.openCount + 'x)' : ''}`;
+            if (s.clicked) statusText += `  •  🔗 Clicked (${s.clickCount})`;
+          } else {
+            statusText = '📭 Not opened';
+          }
+          el.textContent = statusText;
+          el.style.fontWeight = s.opened ? 'bold' : 'normal';
+          el.style.color = s.opened ? '#4ade80' : 'var(--text-muted)';
         } else {
           el.textContent = '⚠️ tracking n/a';
         }
