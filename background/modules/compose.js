@@ -14,7 +14,9 @@ function openGmailCompose(founder) {
 
     const templateData = {
       founder_name: founder.name.split(' ')[0], // First name
-      company_name: founder.companyName,
+      company_name: typeof cleanCompanyName === 'function'
+        ? cleanCompanyName(founder.companyName)
+        : founder.companyName,
       founder_title: founder.title || founder.role,
       your_name: settings.userName || '[Your Name]',
       your_skills: settings.userSkills || '[Your Skills]',
