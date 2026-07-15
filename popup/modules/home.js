@@ -114,24 +114,14 @@ function initHome({ updateStats, updateUIState, runSwTask, refreshBackendSendBut
       const founders = await JFH_DB.getAllFounders();
       const sentLog = await JFH_DB.getAllEmailsSent();
       const sentEmails = new Set(sentLog.map((e) => (e.email || '').toLowerCase()));
-      const withEmail = founders.filter((f) => f.email);
-      const contacted = withEmail.filter((f) => f.contacted).length;
-      const alreadySent = withEmail.filter((f) => sentEmails.has((f.email || '').toLowerCase())).length;
-      const total = withEmail.length;
+      const eligible = founders.filter((f) => f.email && !f.contacted && !sentEmails.has((f.email || '').toLowerCase()));
 
-      if (total === 0) {
-        alert('No founders with emails found. Find emails first (Step 1).');
+      if (eligible.length === 0) {
+        alert('No new founders to email. All have already been contacted or emailed.');
         return;
       }
 
-      const msg = `Send emails to ${total} founders?\n\n` +
-        `• ${total} have emails\n` +
-        `• ${contacted} are marked as contacted (will be resent)\n` +
-        `• ${alreadySent} already sent before (will be resent)\n\n` +
-        `This will queue ALL ${total} emails via backend, including duplicates. Continue?`;
-
-      if (!confirm(msg)) return;
-      runSwTask('SEND_ALL_BACKEND', `Queuing ${total} emails to backend...`);
+      runSwTask('SEND_ALL_BACKEND', `Queuing ${eligible.length} emails to backend...`);
     });
   }
 

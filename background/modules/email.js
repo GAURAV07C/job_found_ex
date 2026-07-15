@@ -44,12 +44,14 @@ function startSendingViaBackend() {
       JFH_DB.saveSetting('emailActionMode', 'backend').catch(() => {});
     }
 
-    return JFH_DB.getAllFounders().then((allFounders) => {
-      // Send to ALL founders that have an email, regardless of contacted/sent status
-      let batch = allFounders.filter((f) => f.email);
+    return JFH_DB.getAllFounders().then(async (allFounders) => {
+      const sentLog = await JFH_DB.getAllEmailsSent();
+      const sentEmails = new Set(sentLog.map((e) => (e.email || '').toLowerCase()));
+
+      let batch = allFounders.filter((f) => f.email && !f.contacted && !sentEmails.has((f.email || '').toLowerCase()));
 
       if (batch.length === 0) {
-        return { success: false, message: 'No founders with emails to send.' };
+        return { success: false, message: 'No new founders to email. All have already been contacted or emailed.' };
       }
 
       JFH_State.isRunning = true;
@@ -173,33 +175,44 @@ function findEmailOnLinkedIn(founder) {
         }).catch(err => console.warn('[JFH] Safety timeout handler error:', err));
       }, 40000); // 40 seconds max per LinkedIn profile
 
-      // Use polling instead of waiting for page completion
-      sendMessageWithRetry(tab.id, {
-        type: 'DETECT_EMAIL',
-        data: { founder }
-      }, 20, 1000)
-      .then(() => {
-        // Successfully pinged content script.
-        // We let safetyTimer keep running. handleEmailDetected will clear it.
-      })
-      .catch(err => {
-        console.warn('[JFH] LinkedIn script not ready', err.message);
-        if (JFH_State.linkedInSafetyTimer) { clearTimeout(JFH_State.linkedInSafetyTimer); JFH_State.linkedInSafetyTimer = null; }
-        if (founder.currentTabId) {
-          chrome.tabs.remove(founder.currentTabId).catch(e => {
-            if (e.message && !e.message.includes('No tab with id')) {
-              console.log('[JFH] Tab removal warning:', e.message);
-            }
-          });
-        }
+      // Read LinkedIn fixed-selector config from settings and forward it
+      JFH_DB.getAllSettings().then((settings) => {
+        const liConfig = {
+          mode: settings.liMode || 'auto',
+          clickSelector: settings.liClickSelector || '',
+          emailSelector: settings.liEmailSelector || '',
+          fillSelector: settings.liFillSelector || '',
+          sendSelector: settings.liSendSelector || ''
+        };
 
-        // Skip and move to next
-        return handleEmailDetected({
-          founderId: founder.id,
-          email: null,
-          found: false,
-          source: 'error'
-        });
+        // Use polling instead of waiting for page completion
+        sendMessageWithRetry(tab.id, {
+          type: 'DETECT_EMAIL',
+          data: { founder, liConfig }
+        }, 20, 1000)
+          .then(() => {
+            // Successfully pinged content script.
+            // We let safetyTimer keep running. handleEmailDetected will clear it.
+          })
+          .catch(err => {
+            console.warn('[JFH] LinkedIn script not ready', err.message);
+            if (JFH_State.linkedInSafetyTimer) { clearTimeout(JFH_State.linkedInSafetyTimer); JFH_State.linkedInSafetyTimer = null; }
+            if (founder.currentTabId) {
+              chrome.tabs.remove(founder.currentTabId).catch(e => {
+                if (e.message && !e.message.includes('No tab with id')) {
+                  console.log('[JFH] Tab removal warning:', e.message);
+                }
+              });
+            }
+
+            // Skip and move to next
+            return handleEmailDetected({
+              founderId: founder.id,
+              email: null,
+              found: false,
+              source: 'error'
+            });
+          });
       });
 
       resolve(); // Let the flow wait for handleEmailDetected

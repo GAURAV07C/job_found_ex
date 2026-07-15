@@ -15,6 +15,15 @@
   let currentFounder = null;
   let emailFound = false;
 
+  // Fixed-selector config forwarded from popup settings via DETECT_EMAIL
+  let liConfig = {
+    mode: 'auto',         // 'auto' | 'finalscout' | 'fixed'
+    clickSelector: '',
+    emailSelector: '',
+    fillSelector: '',
+    sendSelector: ''
+  };
+
   // ========== Inject UI ==========
   function injectUI() {
     const fab = document.createElement('div');
@@ -120,6 +129,176 @@
     const inputEl = document.getElementById('jfh-li-manual-input');
     if (statusEl) statusEl.innerHTML = text;
     if (inputEl) inputEl.style.display = showInput ? 'flex' : 'none';
+  }
+
+  // ========== Fixed-Selector Mode (configured in popup) ==========
+  // Clicks a fixed button, waits for the email to appear at a fixed location,
+  // copies it, optionally fills a page input + clicks a page send button.
+
+  function readEmailFromSelector() {
+    if (!liConfig.emailSelector) return null;
+    const el = document.querySelector(liConfig.emailSelector);
+    if (!el) return null;
+    const text = (el.textContent || el.innerText || '').replace(/\s+/g, ' ').trim();
+    const match = text.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9._-]+\.[a-zA-Z]{2,})/);
+    return match ? match[1] : null;
+  }
+
+  function startFixedSelectorMode() {
+    // FinalScout mode: click its "Get Email" button (below profile card), then read email
+    if (liConfig.mode === 'finalscout' || (!liConfig.clickSelector && !liConfig.emailSelector && liConfig.mode !== 'fixed')) {
+      if (liConfig.mode === 'finalscout' || liConfig.mode === 'auto') {
+        startFinalScoutMode();
+        return;
+      }
+    }
+
+    const hasConfig = liConfig.clickSelector || liConfig.emailSelector;
+    if (!hasConfig) {
+      console.log('[JFH] No fixed-selector config set; using generic detection only.');
+      return;
+    }
+
+    updateStatus('⏳ Clicking fixed email button...', false);
+
+    // 1. Click the fixed target (the email finder button)
+    if (liConfig.clickSelector) {
+      const clickTarget = document.querySelector(liConfig.clickSelector);
+      if (clickTarget) {
+        console.log('[JFH] Fixed-selector click:', liConfig.clickSelector);
+        clickTarget.click();
+      } else {
+        console.warn('[JFH] Fixed click selector not found:', liConfig.clickSelector);
+      }
+    }
+
+    // 2. Poll for the email at the fixed location (extension injects after click)
+    const deadline = Date.now() + 30000;
+    const poll = () => {
+      if (emailFound) return;
+      const email = readEmailFromSelector();
+      if (email) {
+        handleEmailFound(email, 'fixed_selector');
+        return;
+      }
+      if (Date.now() > deadline) {
+        updateStatus('⚠️ Email not found at fixed selector. Enter manually below:', true);
+        return;
+      }
+      setTimeout(poll, 500);
+    };
+    setTimeout(poll, 700);
+  }
+
+  // ========== FinalScout Mode ==========
+  // FinalScout injects a "Get Email" button below the LinkedIn profile card.
+  // Clicking it reveals the email (often in a panel/popup with fs- class names).
+
+  function findFinalScoutButton() {
+    // Candidate elements: broaden to any element that could be the FS button
+    const candidates = Array.from(
+      document.querySelectorAll(
+        'button, a, span, div, li, [role="button"], [class*="fs-"], [class*="finalscout"], [data-fs], [class*="fsie"], [class*="fssb"]'
+      )
+    );
+
+    const EMAIL_WORDS = ['get email', 'get emails', 'show email', 'reveal email', 'find email', 'email address', 'view email', 'copy email'];
+
+    let best = null;
+    for (const el of candidates) {
+      const cls = (el.className || '').toString().toLowerCase();
+      const txt = (el.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
+      const aria = (el.getAttribute('aria-label') || '').toLowerCase();
+
+      // Prefer an element that has fs- class AND "email" text/aria
+      if (cls.includes('fs-') && (txt.includes('email') || aria.includes('email') || txt.includes('get '))) {
+        return el;
+      }
+      // Broad fallback: any clickable-looking element whose text is about email
+      if (!best) {
+        const hit = EMAIL_WORDS.some(w => txt.includes(w)) || EMAIL_WORDS.some(w => aria.includes(w));
+        if (hit && txt.length < 60) best = el;
+      }
+    }
+    return best;
+  }
+
+  // Dump candidate elements to console so we can learn FinalScout's real DOM
+  function dumpFinalScoutCandidates() {
+    try {
+      const els = Array.from(
+        document.querySelectorAll('[class*="fs-"], [class*="finalscout"], [data-fs], button, a')
+      ).filter(el => {
+        const t = (el.textContent || '').toLowerCase();
+        const c = (el.className || '').toString().toLowerCase();
+        return t.includes('email') || c.includes('fs') || c.includes('final');
+      });
+      console.log('[JFH] FinalScout candidate dump (' + els.length + '):');
+      els.slice(0, 25).forEach((el, i) => {
+        console.log(
+          `  [${i}] <${el.tagName.toLowerCase()}> class="${el.className}" ` +
+          `text="${el.textContent.replace(/\s+/g, ' ').trim().slice(0, 50)}" ` +
+          `href="${el.getAttribute('href') || ''}"`
+        );
+      });
+    } catch (e) {
+      console.warn('[JFH] dump failed', e);
+    }
+  }
+
+  function startFinalScoutMode() {
+    updateStatus('⏳ FinalScout: clicking "Get Email"...', false);
+
+    const btn = findFinalScoutButton();
+    if (btn) {
+      console.log('[JFH] FinalScout button found, clicking:', btn);
+      btn.click();
+    } else {
+      console.warn('[JFH] FinalScout "Get Email" button not found yet — will retry.');
+      dumpFinalScoutCandidates(); // learn FS DOM
+    }
+
+    // Poll for the revealed email anywhere on the page
+    const deadline = Date.now() + 30000;
+    const poll = () => {
+      if (emailFound) return;
+
+      // 1. mailto links (most reliable)
+      const mailto = document.querySelector('a[href^="mailto:"]');
+      if (mailto) {
+        const email = mailto.href.replace('mailto:', '').split('?')[0].trim();
+        if (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          handleEmailFound(email, 'finalscout_mailto');
+          return;
+        }
+      }
+
+      // 2. Any fs- element whose text is exactly an email
+      const fsEls = document.querySelectorAll('[class*="fs-"], [class*="finalscout"]');
+      for (const el of fsEls) {
+        const txt = (el.textContent || '').replace(/\s+/g, ' ').trim();
+        const m = txt.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9._-]+\.[a-zA-Z]{2,})/);
+        if (m && !m[1].includes('linkedin.com') && !m[1].includes('sentry.io')) {
+          handleEmailFound(m[1], 'finalscout_dom');
+          return;
+        }
+      }
+
+      // 3. Retry clicking the button if it just appeared (page still rendering)
+      const retry = findFinalScoutButton();
+      if (retry && retry !== btn) {
+        console.log('[JFH] FinalScout button appeared on retry, clicking:', retry);
+        retry.click();
+      }
+
+      if (Date.now() > deadline) {
+        updateStatus('⚠️ FinalScout email not found. Enter manually below:', true);
+        dumpFinalScoutCandidates();
+        return;
+      }
+      setTimeout(poll, 500);
+    };
+    setTimeout(poll, 800);
   }
 
   // Auto-click "Get Email" / "Find Email" / "View Email" buttons
@@ -299,6 +478,20 @@
       saveBtn.click();
     }
 
+    // Optionally fill a page input + click a page send button (configured selectors)
+    if (liConfig.fillSelector) {
+      const fillEl = document.querySelector(liConfig.fillSelector);
+      if (fillEl) {
+        fillEl.value = email;
+        fillEl.dispatchEvent(new Event('input', { bubbles: true }));
+        fillEl.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    }
+    if (liConfig.sendSelector) {
+      const sendEl = document.querySelector(liConfig.sendSelector);
+      if (sendEl) sendEl.click();
+    }
+
     const extractedInfo = currentFounder ? null : extractProfileInfo();
 
     // Notify Service Worker
@@ -336,12 +529,19 @@
     if (message.type === 'DETECT_EMAIL') {
       currentFounder = message.data.founder;
       emailFound = false;
+
+      if (message.data.liConfig) {
+        liConfig = Object.assign(liConfig, message.data.liConfig);
+      }
       
       document.getElementById('jfh-li-card').style.display = 'block';
       updateStatus(`Target: <b>${currentFounder.name}</b><br><small>${currentFounder.companyName}</small>`);
       
-      // Start monitoring for email injection
+      // Start monitoring for email injection (generic fallback)
       setupMutationObserver();
+
+      // Also run configured fixed-selector flow (click fixed button → read email)
+      startFixedSelectorMode();
       
       sendResponse({ received: true });
       return true;

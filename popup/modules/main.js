@@ -47,8 +47,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const progressText = document.getElementById('batch-progress-text');
     const statusEl = document.getElementById('batch-status-text');
 
+    let current = 0;
     if (total > 0 && isRunning) {
-      const current = Math.min(Math.round((progress / 100) * total), total);
+      current = Math.min(Math.round((progress / 100) * total), total);
       progressText.textContent = `${current}/${total}`;
       if (statusText) statusEl.textContent = statusText;
     } else if (total > 0 && !isRunning && progress >= 100) {
@@ -65,9 +66,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (isRunning && total > 0) {
         detailEl.style.display = 'block';
         if (currentTask === 'finding') {
-          const found = completedCount;
-          const notFound = failedCount;
-          const remaining = Math.max(total - currentIndex, 0);
+          const found = completed;
+          const notFound = failed;
+          const remaining = Math.max(total - completed - failed, 0);
           detailEl.textContent = `✅ Found: ${found}  ❌ Not found: ${notFound}  ⏳ Remaining: ${remaining}`;
           detailEl.style.color = '#4ade80';
         } else if (currentTask === 'sending_backend') {

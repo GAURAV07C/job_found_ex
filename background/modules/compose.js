@@ -20,7 +20,10 @@ function openGmailCompose(founder) {
       your_skills: settings.userSkills || '[Your Skills]',
       resume_link: settings.resumeLink || '[Link]',
       position: settings.targetPosition || '[Position]',
-      your_email: settings.userEmail || ''
+      your_email: settings.userEmail || '',
+      github_link: settings.githubLink || '[GitHub]',
+      linkedin_link: settings.linkedinLink || '[LinkedIn]',
+      portfolio_link: settings.portfolioLink || '[Portfolio]'
     };
 
     const emailContent = JFH_Templates.render(templateId, templateData);
