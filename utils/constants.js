@@ -110,7 +110,7 @@ const JFH_CONFIG = {
     QUEUE_ENDPOINT: '/api/queue',
     TRACK_ENDPOINT: '/api/tracking',
     SENT_ENDPOINT: '/api/sent',
-    HEALTH_ENDPOINT: '/health',
+    HEALTH_ENDPOINT: '/api/health',
   },
 
   // ========== MESSAGE TYPES ==========
