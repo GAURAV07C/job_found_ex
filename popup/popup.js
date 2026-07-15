@@ -117,9 +117,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // --- New 3-phase backend flow ---
   function runSwTask(type, successText) {
+    const statusText = document.getElementById('batch-status-text');
+    const statusContainer = document.getElementById('batch-progress-container');
     chrome.runtime.sendMessage({ type }, (response) => {
       if (response && !response.success && response.message) {
-        alert(response.message);
+        if (statusContainer) statusContainer.style.display = 'block';
+        if (statusText) statusText.textContent = '❌ ' + response.message;
       } else if (response && response.success) {
         updateUIState(true, false, 0, response.count, successText);
         document.querySelector('.tab-btn[data-tab="home"]').click();
@@ -134,17 +137,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   const refreshTrackingBtn = document.getElementById('btn-refresh-tracking');
 
   if (findEmailsBtn) findEmailsBtn.addEventListener('click', () => runSwTask('FIND_ALL_EMAILS', 'Finding emails...'));
-  if (sendBackendBtn) sendBackendBtn.addEventListener('click', () => {
-    if (confirm('Send ALL pending founder emails via the backend queue? (Backend mode must be set in Profile)')) {
-      runSwTask('SEND_ALL_BACKEND', 'Queuing emails to backend...');
-    }
-  });
+  if (sendBackendBtn) sendBackendBtn.addEventListener('click', () => runSwTask('SEND_ALL_BACKEND', 'Queuing emails to backend...'));
   if (dataFindEmailsBtn) dataFindEmailsBtn.addEventListener('click', () => runSwTask('FIND_ALL_EMAILS', 'Finding emails...'));
-  if (dataSendBackendBtn) dataSendBackendBtn.addEventListener('click', () => {
-    if (confirm('Send ALL pending founder emails via the backend queue?')) {
-      runSwTask('SEND_ALL_BACKEND', 'Queuing emails to backend...');
-    }
-  });
+  if (dataSendBackendBtn) dataSendBackendBtn.addEventListener('click', () => runSwTask('SEND_ALL_BACKEND', 'Queuing emails to backend...'));
   if (refreshTrackingBtn) refreshTrackingBtn.addEventListener('click', () => {
     loadDataView();
   });
@@ -751,17 +746,24 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   if (connectGmailBtn) {
+    console.log('[Dashboard] Connect Gmail button found:', connectGmailBtn);
     connectGmailBtn.addEventListener('click', async () => {
+      console.log('[Dashboard] Connect Gmail clicked');
       try {
+        console.log('[Dashboard] chrome.identity available:', typeof chrome.identity !== 'undefined');
         gmailToken = await getGmailToken();
+        console.log('[Dashboard] Token obtained:', !!gmailToken);
         gmailStatus.textContent = '✅ Gmail connected. Loading replies…';
         gmailStatus.style.display = 'block';
         await loadReplies();
       } catch (e) {
+        console.error('[Dashboard] Connect Gmail error:', e);
         gmailStatus.textContent = '❌ ' + e.message;
         gmailStatus.style.display = 'block';
       }
     });
+  } else {
+    console.error('[Dashboard] Connect Gmail button NOT found');
   }
 
   async function loadReplies() {

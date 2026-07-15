@@ -132,15 +132,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 // ========== Helper to broadcast state to popup ==========
 function broadcastState(extra = {}) {
+  const total = targetBatch.length;
+  const progress = total > 0 ? Math.round((currentIndex / total) * 100) : 0;
   chrome.runtime.sendMessage({
     type: 'STATE_UPDATE',
     data: {
       isRunning,
       isPaused,
       currentTask,
-      progress: targetBatch.length > 0 ? Math.round((currentIndex / targetBatch.length) * 100) : 0,
+      progress,
       currentIndex,
-      totalCount: targetBatch.length,
+      totalCount: total,
+      currentFounder: extra.currentFounder || '',
+      message: extra.message || '',
       ...extra
     }
   }).catch(() => {}); // Ignore error if popup is closed
