@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   };
 
-  const updateUIState = (isRunning, isPaused, progress = 0, total = 0, statusText = '') => {
+  const updateUIState = (isRunning, isPaused, progress = 0, total = 0, statusText = '', completed = 0, failed = 0, pending = 0, currentTask = '') => {
     const progressCont = document.getElementById('batch-progress-container');
     const controlsDiv = document.getElementById('batch-controls');
     const startBtn = document.getElementById('btn-start-batch');
@@ -59,6 +59,29 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (statusText) statusEl.textContent = statusText;
     }
 
+    // Update detailed status based on task type
+    const detailEl = document.getElementById('batch-detail-text');
+    if (detailEl) {
+      if (isRunning && total > 0) {
+        detailEl.style.display = 'block';
+        if (currentTask === 'finding') {
+          const found = completedCount;
+          const notFound = failedCount;
+          const remaining = Math.max(total - currentIndex, 0);
+          detailEl.textContent = `✅ Found: ${found}  ❌ Not found: ${notFound}  ⏳ Remaining: ${remaining}`;
+          detailEl.style.color = '#4ade80';
+        } else if (currentTask === 'sending_backend') {
+          detailEl.textContent = `✅ ${completed} sent  ❌ ${failed} failed  ⏳ ${pending} pending`;
+          detailEl.style.color = 'var(--text-muted)';
+        } else {
+          detailEl.textContent = `Processing: ${current}/${total}`;
+          detailEl.style.color = 'var(--text-muted)';
+        }
+      } else {
+        detailEl.style.display = 'none';
+      }
+    }
+
     const pauseBtn = document.getElementById('btn-pause-batch');
     if (pauseBtn) {
       if (isPaused) {
@@ -79,7 +102,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (statusContainer) statusContainer.style.display = 'block';
         if (statusText) statusText.textContent = '❌ ' + response.message;
       } else if (response && response.success) {
-        updateUIState(true, false, 0, response.count, successText);
+        updateUIState(true, false, 0, response.count, successText, 0, 0, response.count);
         document.querySelector('.tab-btn[data-tab="home"]')?.click();
       }
     });
@@ -250,14 +273,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Global state listener
   chrome.runtime.onMessage.addListener((msg) => {
     if (msg.type === 'STATE_UPDATE') {
-      const { isRunning, isPaused, progress, currentIndex, totalCount, currentFounder, message } = msg.data;
+      const { isRunning, isPaused, progress, currentIndex, totalCount, currentFounder, message, completedCount, failedCount, pendingCount, currentTask } = msg.data;
       let statusText = '';
       if (message) statusText = message;
       else if (isPaused) statusText = 'Paused';
       else if (currentFounder) statusText = `Processing: ${currentFounder}`;
       else if (isRunning) statusText = 'Running...';
 
-      updateUIState(isRunning, isPaused, progress, totalCount, statusText);
+      updateUIState(isRunning, isPaused, progress, totalCount, statusText, completedCount, failedCount, pendingCount, currentTask);
       updateStats();
       if (refreshBackendSendButton) refreshBackendSendButton();
     }

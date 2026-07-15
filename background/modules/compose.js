@@ -55,8 +55,9 @@ function openGmailCompose(founder) {
           handleBackendSent(founder, founder.email, emailContent, settings);
         } else {
           console.error(`[JFH] Backend send failed for ${founder.name}:`, res.message);
+          JFH_State.failedCount++;
+          broadcastState({ currentFounder: `Backend failed for ${founder.name}` });
           // Fallback: open Gmail compose so the user can send manually
-          broadcastState({ currentFounder: `Backend failed for ${founder.name}, opening Gmail...` });
           openGmailTab(founder, emailContent, settings);
         }
         return res;
@@ -108,6 +109,8 @@ function startSendingDraftsFlow() {
   JFH_State.isRunning = true;
   JFH_State.isPaused = false;
   JFH_State.currentTask = 'sending_drafts';
+  JFH_State.completedCount = 0;
+  JFH_State.failedCount = 0;
   broadcastState({ message: 'Opening Gmail Drafts...' });
 
   chrome.tabs.create({ url: 'https://mail.google.com/mail/u/0/#drafts', active: true }, async (tab) => {

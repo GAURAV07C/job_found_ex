@@ -122,15 +122,57 @@
     if (inputEl) inputEl.style.display = showInput ? 'flex' : 'none';
   }
 
+  // Auto-click "Get Email" / "Find Email" / "View Email" buttons
+  function autoClickEmailFinder() {
+    if (emailFound) return;
+
+    const selectors = [
+      'button', 'a', 'div[role="button"]',
+      '[class*="email"]', '[class*="Email"]',
+      '[class*="find"]', '[class*="Find"]',
+      '[class*="get"]', '[class*="Get"]',
+      '[class*="view"]', '[class*="View"]',
+      '[class*="apollo"]', '[class*="hunter"]', '[class*="lusha"]'
+    ];
+
+    const buttons = document.querySelectorAll(selectors.join(', '));
+    for (const btn of buttons) {
+      const text = (btn.textContent || '').toLowerCase();
+      const className = (btn.className || '').toString().toLowerCase();
+
+      if (
+        text.includes('get email') ||
+        text.includes('find email') ||
+        text.includes('view email') ||
+        text.includes('search email') ||
+        text.includes('reveal email') ||
+        className.includes('apollo') ||
+        className.includes('hunter') ||
+        className.includes('lusha') ||
+        className.includes('finalscout') ||
+        className.includes('email-finder')
+      ) {
+        if (!btn.dataset.jfhClicked) {
+          console.log('[JFH] Auto-clicking email finder button:', btn);
+          btn.dataset.jfhClicked = "true";
+          btn.click();
+          setTimeout(() => {
+            if (btn.dataset.jfhClicked) delete btn.dataset.jfhClicked;
+          }, 5000);
+          break;
+        }
+      }
+    }
+  }
+
   // ========== Email Detection Logic ==========
   
   // Listen for DOM mutations to catch injected emails from other extensions
   function setupMutationObserver() {
-    // Show status and input box immediately so user can paste manually
-    updateStatus('⏳ Scanning for emails...<br><small>Paste email below if found manually:</small>', true);
-    
-    // Check immediately in case it's already there
-    if (checkForEmail()) return;
+    updateStatus('⏳ Scanning for emails...<br><small>Looking for Get Email button...</small>', true);
+
+    // Auto-click "Get Email" button immediately and on changes
+    autoClickEmailFinder();
 
     const observer = new MutationObserver((mutations) => {
       if (emailFound) {
@@ -138,6 +180,7 @@
         return;
       }
       checkForEmail();
+      autoClickEmailFinder();
     });
 
     observer.observe(document.body, {
@@ -241,11 +284,21 @@
   function handleEmailFound(email, source = 'unknown') {
     if (emailFound) return true; // Already processed
     emailFound = true;
-    
+
     console.log(`[JFH] Email found via ${source}:`, email);
-    
-    updateStatus(`✅ <b>Email Found:</b><br>${email}<br><small>Proceeding to Gmail...</small>`);
-    
+
+    updateStatus(`✅ <b>Email Found:</b><br>${email}<br><small>Auto-saving...</small>`);
+
+    // Auto-fill input and click Save
+    const inputEl = document.getElementById('jfh-email-input');
+    const saveBtn = document.getElementById('jfh-save-email-btn');
+    if (inputEl) {
+      inputEl.value = email;
+    }
+    if (saveBtn) {
+      saveBtn.click();
+    }
+
     const extractedInfo = currentFounder ? null : extractProfileInfo();
 
     // Notify Service Worker

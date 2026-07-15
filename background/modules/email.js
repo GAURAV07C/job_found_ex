@@ -21,6 +21,8 @@ function startFindingEmails() {
     JFH_State.isPaused = false;
     JFH_State.currentTask = 'finding';
     JFH_State.currentIndex = 0;
+    JFH_State.completedCount = 0;
+    JFH_State.failedCount = 0;
     JFH_State.findOnlyMode = true;
 
     broadcastState();
@@ -54,6 +56,8 @@ function startSendingViaBackend() {
       JFH_State.isPaused = false;
       JFH_State.currentTask = 'sending_backend';
       JFH_State.currentIndex = 0;
+      JFH_State.completedCount = 0;
+      JFH_State.failedCount = 0;
       JFH_State.findOnlyMode = false;
       JFH_State.targetBatch = batch;
 
@@ -84,6 +88,8 @@ function startBatchEmailing() {
     JFH_State.isPaused = false;
     JFH_State.currentTask = 'emailing';
     JFH_State.currentIndex = 0;
+    JFH_State.completedCount = 0;
+    JFH_State.failedCount = 0;
 
     broadcastState();
 
@@ -272,6 +278,7 @@ async function handleEmailDetected(data) {
       console.log(`[JFH] Email found for ${founder.name}: ${email}`);
       broadcastState({ currentFounder: `Found email for ${founder.name}` });
       JFH_State.currentIndex++;
+      JFH_State.completedCount++;
       setTimeout(processNextEmail, JFH_CONFIG.DELAYS.BETWEEN_LINKEDIN);
     } else {
       // Broadcast state to refresh popup stats immediately
@@ -291,6 +298,8 @@ async function handleEmailDetected(data) {
     // Skip to next
     console.log(`[JFH] No email found for ${founder.name}, skipping.`);
     JFH_State.currentIndex++;
+    JFH_State.failedCount++;
+    broadcastState({ currentFounder: `Skipped ${founder.name}` });
     setTimeout(processNextEmail, JFH_CONFIG.DELAYS.BETWEEN_LINKEDIN);
   }
 
@@ -310,6 +319,8 @@ function handleBackendSent(founder, email, emailContent, settings) {
     trackingId: founder.trackingId || '',
   });
   JFH_State.currentIndex++;
+  JFH_State.completedCount++;
+  broadcastState({ currentFounder: `Sent to ${founder.name}` });
   setTimeout(processNextEmail, JFH_CONFIG.DELAYS.BETWEEN_EMAILS);
 }
 

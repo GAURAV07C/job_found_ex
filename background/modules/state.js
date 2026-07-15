@@ -10,6 +10,8 @@ let targetBatch = [];
 let currentIndex = 0;
 let findOnlyMode = false;
 let linkedInSafetyTimer = null;
+let completedCount = 0;
+let failedCount = 0;
 
 // Founder scraping state
 let founderScrapeQueue = [];
@@ -36,6 +38,9 @@ function broadcastState(extra = {}) {
       progress,
       currentIndex,
       totalCount: total,
+      completedCount,
+      failedCount,
+      pendingCount: Math.max(total - currentIndex, 0),
       currentFounder: extra.currentFounder || '',
       message: extra.message || '',
       ...extra

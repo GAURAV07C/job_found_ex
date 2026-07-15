@@ -8,6 +8,8 @@ async function startWasApplyFlow({ jobs, settings }) {
 
   JFH_State.wasApplyQueue = jobs;
   JFH_State.wasApplyIndex = 0;
+  JFH_State.completedCount = 0;
+  JFH_State.failedCount = 0;
   JFH_State.isWasApplying = true;
 
   console.log(`[JFH] Starting WAS auto-apply for ${jobs.length} jobs`);

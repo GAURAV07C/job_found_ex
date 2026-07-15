@@ -78,6 +78,8 @@ async function startFounderScraping() {
     !c.foundersScraped
   );
   JFH_State.founderScrapeIndex = 0;
+  JFH_State.completedCount = 0;
+  JFH_State.failedCount = 0;
   JFH_State.isFounderScraping = true;
 
   console.log(`[JFH] Starting founder scrape for ${JFH_State.founderScrapeQueue.length} companies`);
