@@ -175,44 +175,33 @@ function findEmailOnLinkedIn(founder) {
         }).catch(err => console.warn('[JFH] Safety timeout handler error:', err));
       }, 40000); // 40 seconds max per LinkedIn profile
 
-      // Read LinkedIn fixed-selector config from settings and forward it
-      JFH_DB.getAllSettings().then((settings) => {
-        const liConfig = {
-          mode: settings.liMode || 'auto',
-          clickSelector: settings.liClickSelector || '',
-          emailSelector: settings.liEmailSelector || '',
-          fillSelector: settings.liFillSelector || '',
-          sendSelector: settings.liSendSelector || ''
-        };
-
-        // Use polling instead of waiting for page completion
-        sendMessageWithRetry(tab.id, {
-          type: 'DETECT_EMAIL',
-          data: { founder, liConfig }
-        }, 20, 1000)
-          .then(() => {
-            // Successfully pinged content script.
-            // We let safetyTimer keep running. handleEmailDetected will clear it.
-          })
-          .catch(err => {
-            console.warn('[JFH] LinkedIn script not ready', err.message);
-            if (JFH_State.linkedInSafetyTimer) { clearTimeout(JFH_State.linkedInSafetyTimer); JFH_State.linkedInSafetyTimer = null; }
-            if (founder.currentTabId) {
-              chrome.tabs.remove(founder.currentTabId).catch(e => {
-                if (e.message && !e.message.includes('No tab with id')) {
-                  console.log('[JFH] Tab removal warning:', e.message);
-                }
-              });
+      // Use polling instead of waiting for page completion
+      sendMessageWithRetry(tab.id, {
+        type: 'DETECT_EMAIL',
+        data: { founder }
+      }, 20, 1000)
+      .then(() => {
+        // Successfully pinged content script.
+        // We let safetyTimer keep running. handleEmailDetected will clear it.
+      })
+      .catch(err => {
+        console.warn('[JFH] LinkedIn script not ready', err.message);
+        if (JFH_State.linkedInSafetyTimer) { clearTimeout(JFH_State.linkedInSafetyTimer); JFH_State.linkedInSafetyTimer = null; }
+        if (founder.currentTabId) {
+          chrome.tabs.remove(founder.currentTabId).catch(e => {
+            if (e.message && !e.message.includes('No tab with id')) {
+              console.log('[JFH] Tab removal warning:', e.message);
             }
-
-            // Skip and move to next
-            return handleEmailDetected({
-              founderId: founder.id,
-              email: null,
-              found: false,
-              source: 'error'
-            });
           });
+        }
+
+        // Skip and move to next
+        return handleEmailDetected({
+          founderId: founder.id,
+          email: null,
+          found: false,
+          source: 'error'
+        });
       });
 
       resolve(); // Let the flow wait for handleEmailDetected

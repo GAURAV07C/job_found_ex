@@ -138,18 +138,18 @@
       const descEl = link.querySelector('span[class*="one-liner"], .one-liner, span[class*="description"], [class*="tagline"]');
       const batchEl = link.querySelector('span[class*="batch"], .pill, span[class*="YearBatch"], span[class*="pill"]');
 
-      let name = nameEl?.textContent?.trim() || '';
+      let name = cleanCompanyName(nameEl?.textContent?.trim() || '');
       const description = descEl?.textContent?.trim() || '';
       const batch = batchEl?.textContent?.trim() || '';
 
       // If name is still empty, try to get just the first text node of the link
       if (!name) {
-         name = link.childNodes.length > 0 ? Array.from(link.childNodes).find(n => n.nodeType === 3)?.textContent?.trim() : link.textContent?.trim();
+         let rawName = link.childNodes.length > 0 ? Array.from(link.childNodes).find(n => n.nodeType === 3)?.textContent?.trim() : link.textContent?.trim();
          // If it's too long, it's probably the whole card text. Take the first line.
-         if (name && name.length > 30) {
-            name = name.split('\n')[0].trim();
+         if (rawName && rawName.length > 30) {
+            rawName = rawName.split('\n')[0].trim();
          }
-      }
+         name = cleanCompanyName(rawName);
 
       if (name && name.length > 0) {
         companies.push({
@@ -182,7 +182,7 @@
 
     // Company name
     const nameEl = document.querySelector('h1, [class*="company-name"]');
-    company.name = nameEl?.textContent?.trim() || document.title || '';
+    company.name = cleanCompanyName(nameEl?.textContent?.trim() || document.title || '');
 
     // Description
     const descEl = document.querySelector('[class*="description"], [class*="tagline"], p[class*="prose"]');

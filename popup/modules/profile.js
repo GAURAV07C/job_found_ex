@@ -35,8 +35,6 @@ function initProfile({ updateStats, refreshBackendSendButton }) {
       qaWhyCompany: 'qa-why-company', qaAboutMe: 'qa-about-me',
       qaLookingFor: 'qa-looking-for', qaAchievement: 'qa-achievement',
       qaWhyLeaving: 'qa-why-leaving',
-      liMode: 'set-li-mode', liClickSelector: 'set-li-click', liEmailSelector: 'set-li-email',
-      liFillSelector: 'set-li-fill', liSendSelector: 'set-li-send',
     };
 
     Object.entries(map).forEach(([key, id]) => {
@@ -284,11 +282,6 @@ function initProfile({ updateStats, refreshBackendSendButton }) {
       qaLookingFor: document.getElementById('qa-looking-for').value,
       qaAchievement: document.getElementById('qa-achievement').value,
       qaWhyLeaving: document.getElementById('qa-why-leaving').value,
-      liMode: document.getElementById('set-li-mode').value,
-      liClickSelector: document.getElementById('set-li-click').value.trim(),
-      liEmailSelector: document.getElementById('set-li-email').value.trim(),
-      liFillSelector: document.getElementById('set-li-fill').value.trim(),
-      liSendSelector: document.getElementById('set-li-send').value.trim(),
     };
 
     for (const [key, value] of Object.entries(newSettings)) {

@@ -153,3 +153,46 @@ const JFH_CONFIG = {
 if (typeof window !== 'undefined') {
   window.JFH_CONFIG = JFH_CONFIG;
 }
+
+/**
+ * Clean a raw company name scraped from a directory/detail page.
+ * Strips fused location, tagline, batch, industry, and other appended metadata
+ * so the name is safe to drop into a cold-email subject/body.
+ *
+ * @param {string} raw
+ * @returns {string}
+ */
+function cleanCompanyName(raw) {
+  if (!raw || typeof raw !== 'string') return '';
+  let name = raw.trim();
+
+  // Remove parenthetical / bracketed metadata FIRST: "(San Francisco)"
+  name = name.replace(/\s*[\(\[][^\)\]]*[\)\]]/g, ' ').trim();
+
+  // YC detail h1 concatenates everything with NO spaces, e.g.
+  // "BillionToOneSan Francisco, CA, USAThe genetic testing platform..."
+  // The real name is the part BEFORE the first location/metadata chunk.
+  // Cut at the first location keyword (city/state/country) that begins a new
+  // capitalized word — this handles "BillionToOneSan Francisco" (no space).
+  let head = name.split(/(?=[,]\s*[A-Z]{2}\b|(New |Los |Columbia|Remote|United States|USA|UK|Canada)\b)/)[0];
+  head = head.replace(/(San Francisco|Columbia|Remote)$/i, '').trim();
+
+  // Fallback: cut at the first separator if present: " | ", " — ", " - ", " : "
+  if (!head || head === name) {
+    head = name.split(/\s*[\|—–\-:]\s*/)[0];
+  }
+
+  // Cut at the first uppercase-starting descriptive word AFTER a sentence-ending
+  // period (e.g. "BillionToOne...disease.Summer 2017") — keep only up to a dot.
+  head = head.split(/\.(?=[A-Z])/)[0];
+
+  // Remove parenthetical / bracketed metadata: "(San Francisco)"
+  head = head.replace(/\s*[\(\[][^\)\]]*[\)\]]/g, '').trim();
+
+  // Cut off trailing known YC-style metadata tokens (batch, category, industry)
+  head = head.replace(/\b(Winter|Summer|Spring|Fall)\s*\d{4}.*$/i, '');
+  head = head.replace(/\b(YC\s*S?\d{2}.*|Consumer|Enterprise|B2B|B2C).*$/i, '');
+  head = head.replace(/\b(Virtual and Augmented Reality|Real Estate and Construction|Construction|FinTech|Healthcare|AI|SaaS|Diagnostics).*$/i, '');
+
+  return head.replace(/\s+/g, ' ').trim();
+}
