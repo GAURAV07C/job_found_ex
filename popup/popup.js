@@ -767,7 +767,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const clicked = s.clicked ? `  •  🔗 Clicked (${s.clickCount})` : '';
         const errLine = s.error ? `<div class="tracking-status" style="color:#ff6b6b;">${s.error}</div>` : '';
         const pixelLine = s.trackId
-          ? `<div class="tracking-status"><a href="${auth.backendUrl.replace(/\/+$/, '')}/track/open/${s.trackId}.png" target="_blank" style="color:var(--primary);">🔍 Test pixel: ${s.trackId}.png</a></div>`
+          ? `<div class="tracking-status"><a href="${auth.backendUrl.replace(/\/+$/, '')}/api/track/open?id=${s.trackId}" target="_blank" style="color:var(--primary);">🔍 Test pixel: ${s.trackId}</a></div>`
           : '';
         item.innerHTML = `
           <div style="flex:1;">
