@@ -35,7 +35,7 @@
     "service_worker": "background/service-worker.js"
   },
   "oauth2": {
-    "client_id": "REPLACE_WITH_YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com",
+    "client_id": "777685180536-lp3a6ftqj7klc8p5bnvlill4kflferb8.apps.googleusercontent.com",
     "scopes": [
       "https://www.googleapis.com/auth/gmail.readonly"
     ]

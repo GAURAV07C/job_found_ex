@@ -738,6 +738,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function getGmailToken() {
     return new Promise((resolve, reject) => {
+      if (!chrome.identity || typeof chrome.identity.getAuthToken !== 'function') {
+        return reject(new Error('chrome.identity not available. Make sure "identity" permission is in manifest and extension is reloaded.'));
+      }
       chrome.identity.getAuthToken({ interactive: true }, (token) => {
         if (chrome.runtime.lastError || !token) {
           return reject(new Error(chrome.runtime.lastError?.message || 'Gmail auth failed'));

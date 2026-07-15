@@ -2,7 +2,6 @@ const { Queue, Worker } = require('bullmq');
 const config = require('./config');
 const { sendMail } = require('./mailer');
 const track = require('./track');
-const { getClient, reconnect } = require('./redisClient');
 
 const QUEUE_NAME = 'outreach-emails';
 
@@ -10,10 +9,14 @@ let queue = null;
 let worker = null;
 
 function buildInfra() {
-  const connection = getClient();
+  // Pass connection OPTIONS (not a shared instance) so BullMQ creates and manages
+  // its own dedicated connections. Sharing one ioredis instance between the Queue
+  // (addBulk) and the Worker (blocking pop) can stall job processing on serverless
+  // Redis (Upstash).
+  const connectionOpts = { url: config.redisUrl, maxRetriesPerRequest: null };
 
   queue = new Queue(QUEUE_NAME, {
-    connection,
+    connection: connectionOpts,
     defaultJobOptions: {
       attempts: config.queue.attempts,
       backoff: { type: 'fixed', delay: config.queue.backoffMs },
@@ -31,7 +34,7 @@ function buildInfra() {
       return { messageId: info.messageId, to: mail.to };
     },
     {
-      connection,
+      connection: connectionOpts,
       concurrency: config.queue.concurrency,
       limiter: {
         max: config.queue.maxPerWindow,
