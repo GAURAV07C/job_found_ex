@@ -5,7 +5,17 @@ const { enqueueEmails, getQueueCounts } = require('./queue');
 const track = require('./track');
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'chrome-extension://kgaokgfemocjlkkmiebekadkdjeongke',
+    'https://fgmnxr8j-3000.inc1.devtunnels.ms'
+  ],
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'x-api-key'],
+  credentials: false,
+}));
 app.use(express.json({ limit: '2mb' }));
 
 // ---- Auth middleware (API key) ----

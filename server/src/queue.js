@@ -29,6 +29,9 @@ function buildInfra() {
     QUEUE_NAME,
     async (job) => {
       const mail = job.data;
+      // Log a snippet of the HTML for debugging
+      const htmlSnippet = (mail.html || '').slice(-200);
+      console.log(`[queue] sending to=${mail.to} trackId=${mail.trackId} htmlEnd=${JSON.stringify(htmlSnippet)}`);
       const info = await sendMail(mail);
       await track.markSent(mail.trackId).catch(() => {});
       return { messageId: info.messageId, to: mail.to };

@@ -34,16 +34,17 @@ async function saveMeta(trackId, meta) {
  */
 function buildTrackedHtml(body, trackId) {
   const openPixel = `${config.publicBaseUrl}/track/open/${trackId}.png`;
-  const clickBase = `${config.publicBaseUrl}/track/click/${trackId}?to=`;
+  const clickBase = `${config.publicBaseUrl}/track/click/`;
 
   // Rewrite plaintext links to go through the click tracker
   const urlRegex = /https?:\/\/[^\s<>"')]+/g;
   const trackedText = (body || '').replace(urlRegex, (url) => {
-    return clickBase + encodeURIComponent(url);
+    const linkId = generateTrackingId();
+    saveMeta(linkId, { to: '', founderId: '', subject: '' }).catch(() => {});
+    return `${clickBase}${linkId}?to=${encodeURIComponent(url)}`;
   });
 
   const html = (trackedText || '').replace(/\n/g, '<br>');
-  // Use a transparent spacer GIF instead of display:none (Gmail strips display:none images).
   const spacer = `data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7`;
   return `${html}<br><img src="${spacer}" width="1" height="1" border="0" alt="" /><img src="${openPixel}" width="1" height="1" border="0" alt="" style="border:0; outline:none; text-decoration:none;" />`;
 }
