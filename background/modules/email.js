@@ -151,7 +151,11 @@ function findEmailOnLinkedIn(founder) {
       JFH_State.linkedInSafetyTimer = setTimeout(() => {
         console.warn(`[JFH] Safety timeout on LinkedIn for ${founder.name}`);
         if (founder.currentTabId) {
-          chrome.tabs.remove(founder.currentTabId).catch(() => {});
+          chrome.tabs.remove(founder.currentTabId).catch(e => {
+            if (e.message && !e.message.includes('No tab with id')) {
+              console.log('[JFH] Tab removal warning:', e.message);
+            }
+          });
         }
 
         // Treat as email not found
@@ -160,7 +164,7 @@ function findEmailOnLinkedIn(founder) {
           email: null,
           found: false,
           source: 'timeout'
-        });
+        }).catch(err => console.warn('[JFH] Safety timeout handler error:', err));
       }, 40000); // 40 seconds max per LinkedIn profile
 
       // Use polling instead of waiting for page completion
@@ -176,11 +180,15 @@ function findEmailOnLinkedIn(founder) {
         console.warn('[JFH] LinkedIn script not ready', err.message);
         if (JFH_State.linkedInSafetyTimer) { clearTimeout(JFH_State.linkedInSafetyTimer); JFH_State.linkedInSafetyTimer = null; }
         if (founder.currentTabId) {
-          chrome.tabs.remove(founder.currentTabId).catch(() => {});
+          chrome.tabs.remove(founder.currentTabId).catch(e => {
+            if (e.message && !e.message.includes('No tab with id')) {
+              console.log('[JFH] Tab removal warning:', e.message);
+            }
+          });
         }
 
         // Skip and move to next
-        handleEmailDetected({
+        return handleEmailDetected({
           founderId: founder.id,
           email: null,
           found: false,
@@ -193,7 +201,7 @@ function findEmailOnLinkedIn(founder) {
   });
 }
 
-function handleEmailDetected(data) {
+async function handleEmailDetected(data) {
   const { founderId, email, found, source, extractedInfo } = data;
 
   // ALWAYS cancel safety timer first — prevents race condition
@@ -219,7 +227,7 @@ function handleEmailDetected(data) {
 
     // Check if we already have this founder in DB by ID (even if not in active batch)
     if (founderId) {
-      founder = JFH_DB.getFounder(founderId);
+      founder = await JFH_DB.getFounder(founderId);
     }
 
     // If still no founder, create a temporary one from extracted info
@@ -234,25 +242,29 @@ function handleEmailDetected(data) {
         source: 'manual',
         contacted: false
       };
-      JFH_DB.addFounder(founder);
+      await JFH_DB.addFounder(founder);
     }
   }
 
   if (!founder) {
     console.warn('[JFH] Founder not found and no extracted info available. Cannot proceed.');
-    return { success: false, message: 'Founder not found' };
+    return Promise.resolve({ success: false, message: 'Founder not found' });
   }
 
   console.log(`[JFH] handleEmailDetected for ${founder.name}: found=${found}, email=${email}, source=${source}`);
 
   // Close the exact LinkedIn tab we opened
   if (founder && founder.currentTabId) {
-    chrome.tabs.remove(founder.currentTabId).catch(e => console.log('Tab already closed:', e));
+    chrome.tabs.remove(founder.currentTabId).catch(e => {
+      if (e.message && !e.message.includes('No tab with id')) {
+        console.log('[JFH] Tab removal warning:', e.message);
+      }
+    });
   }
 
   if (found && email) {
     // Update DB
-    JFH_DB.updateFounderEmail(founderId, email);
+    await JFH_DB.updateFounderEmail(founderId, email);
     founder.email = email;
 
     if (JFH_State.findOnlyMode) {
@@ -265,15 +277,15 @@ function handleEmailDetected(data) {
       // Broadcast state to refresh popup stats immediately
       broadcastState({ currentFounder: `Drafting email for ${founder.name}` });
       // Proceed to compose
-      openGmailCompose(founder);
+      await openGmailCompose(founder);
     }
   } else {
     // Mark as attempted so we don't try again next time
-    const dbFounder = JFH_DB.getFounder(founderId);
+    const dbFounder = await JFH_DB.getFounder(founderId);
     if (dbFounder) {
       dbFounder.emailSearchAttempted = true;
       dbFounder.status = 'email_not_found';
-      JFH_DB.updateFounder(dbFounder);
+      await JFH_DB.updateFounder(dbFounder);
     }
 
     // Skip to next
@@ -282,7 +294,7 @@ function handleEmailDetected(data) {
     setTimeout(processNextEmail, JFH_CONFIG.DELAYS.BETWEEN_LINKEDIN);
   }
 
-  return { success: true };
+  return Promise.resolve({ success: true });
 }
 
 // Called when an email is successfully queued via the backend

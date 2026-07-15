@@ -188,6 +188,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       updateUIState(isRunning, isPaused, progress, totalCount, statusText);
       updateStats();
+      if (refreshBackendSendButton) refreshBackendSendButton();
     }
 
     if (msg.type === 'FOUNDER_SCRAPE_UPDATE') {

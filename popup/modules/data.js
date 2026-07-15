@@ -165,6 +165,7 @@ function initData({ loadDataView }) {
       await JFH_DB.clearAll();
       window.JFH_Home?.updateStats?.();
       loadDataView(currentDataView, currentFilter);
+      if (window.__JFH_REFRESH_BACKEND_COUNT) window.__JFH_REFRESH_BACKEND_COUNT();
       alert('Database cleared.');
     }
   });

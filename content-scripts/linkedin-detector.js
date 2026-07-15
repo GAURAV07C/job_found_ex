@@ -151,14 +151,18 @@
       if (!emailFound && currentFounder) {
         observer.disconnect();
         updateStatus('⚠️ Could not detect email automatically. Please enter it below:', true); // Show input field now
-        chrome.runtime.sendMessage({
-          type: 'EMAIL_DETECTED',
-          data: {
-            founderId: currentFounder.id,
-            email: null,
-            found: false
-          }
-        });
+        try {
+          chrome.runtime.sendMessage({
+            type: 'EMAIL_DETECTED',
+            data: {
+              founderId: currentFounder.id,
+              email: null,
+              found: false
+            }
+          });
+        } catch (e) {
+          console.warn('[JFH] Could not send email detection to background:', e.message);
+        }
       }
     }, 30000);
   }
@@ -245,16 +249,20 @@
     const extractedInfo = currentFounder ? null : extractProfileInfo();
 
     // Notify Service Worker
-    chrome.runtime.sendMessage({
-      type: 'EMAIL_DETECTED',
-      data: {
-        founderId: currentFounder ? currentFounder.id : null,
-        email: email,
-        found: true,
-        source: source,
-        extractedInfo: extractedInfo // Pass this if no founder ID is known
-      }
-    });
+    try {
+      chrome.runtime.sendMessage({
+        type: 'EMAIL_DETECTED',
+        data: {
+          founderId: currentFounder ? currentFounder.id : null,
+          email: email,
+          found: true,
+          source: source,
+          extractedInfo: extractedInfo // Pass this if no founder ID is known
+        }
+      });
+    } catch (e) {
+      console.warn('[JFH] Could not send email detection to background:', e.message);
+    }
 
     return true;
   }
