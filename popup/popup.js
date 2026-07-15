@@ -411,21 +411,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     const subject = `[TEST] ${rendered.subject}`;
     const body = rendered.body;
 
-    // Always send through the backend queue (with open + click tracking).
     const auth = {
       backendUrl: document.getElementById('set-backend-url').value || JFH_CONFIG.BACKEND.DEFAULT_URL,
       apiKey: document.getElementById('set-backend-key').value || JFH_CONFIG.BACKEND.DEFAULT_API_KEY,
     };
+    console.log('[test mail] backendUrl:', auth.backendUrl);
+    console.log('[test mail] apiKey set:', !!auth.apiKey);
+
     testMailStatus.textContent = '⏳ Sending test mail via backend...';
     testMailStatus.style.display = 'block';
     const res = await JFH_Helpers.sendEmailViaBackend(
       { to: userEmail, subject, body, replyTo: userEmail },
       auth
     );
+    console.log('[test mail] backend response:', res);
+
     if (res.success) {
       testMailStatus.textContent = `✅ Test mail queued! (${res.queued} email(s)) Tracking active. It will arrive at ${userEmail}.`;
     } else {
-      // Fallback: open Gmail compose so the user can send manually
       console.warn('[test mail] backend failed, falling back to Gmail:', res.message);
       const encodedTo = encodeURIComponent(userEmail);
       const encodedSubject = encodeURIComponent(subject);

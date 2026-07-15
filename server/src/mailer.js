@@ -1,10 +1,8 @@
 const nodemailer = require('nodemailer');
 const config = require('./config');
 
-/**
- * Creates a Nodemailer transporter backed by the configured SMTP server.
- * Uses a pooled connection for better throughput under the queue.
- */
+const SMTP_TIMEOUT_MS = 30_000; // 30s for Render free tier cold starts
+
 function createTransporter() {
   const { host, port, secure, user, pass } = config.smtp;
 
@@ -20,10 +18,12 @@ function createTransporter() {
     secure,
     auth: { user, pass },
     pool: true,
-    maxConnections: 5,
-    maxMessages: 100,
+    maxConnections: 2,
+    maxMessages: 50,
     rateDelta: config.queue.windowMs,
     rateLimit: config.queue.maxPerWindow,
+    connectionTimeout: SMTP_TIMEOUT_MS,
+    socketTimeout: SMTP_TIMEOUT_MS,
   });
 }
 

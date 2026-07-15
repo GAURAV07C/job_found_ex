@@ -48,8 +48,9 @@ function buildInfra() {
   });
 
   worker.on('failed', (job, err) => {
-    console.error(`[queue] failed -> ${job?.data?.to} (job ${job?.id}):`, err.message);
-    if (job?.data?.trackId) track.markFailed(job.data.trackId, err.message).catch(() => {});
+    const msg = err.message || String(err);
+    console.error(`[queue] failed -> ${job?.data?.to} (job ${job?.id}):`, msg);
+    if (job?.data?.trackId) track.markFailed(job.data.trackId, msg).catch(() => {});
   });
 }
 
