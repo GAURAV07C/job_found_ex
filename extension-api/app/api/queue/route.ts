@@ -5,7 +5,7 @@ export const runtime = 'nodejs';
 
 export async function GET() {
   try {
-    const r = getRedis();
+    const r = await getRedis();
     const waiting = await r.zcard('queue:waiting');
     const active = await r.zcard('queue:active');
     const completed = await r.zcard('queue:completed');

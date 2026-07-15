@@ -74,7 +74,7 @@ export default function Dashboard() {
 
   async function testPixel(trackId: string) {
     try {
-      await fetch(`${baseUrl}/track/open/${trackId}.png`);
+      await fetch(`${baseUrl}/api/track/open?id=${trackId}`);
       setStatus('✅ Pixel hit recorded. Refresh sent list to see open count.');
       await loadSent();
     } catch (e: any) {

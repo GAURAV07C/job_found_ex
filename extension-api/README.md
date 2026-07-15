@@ -43,7 +43,7 @@ Server runs at `http://localhost:3000`
 | GET | `/health` | No | Health check |
 | POST | `/api/send` | API Key | Send email(s) with tracking |
 | GET | `/api/sent` | API Key | List sent emails with tracking status |
-| GET | `/track/open/:id.png` | No | Open tracking pixel |
+| GET | `/track/open/:id` | No | Open tracking pixel |
 | GET | `/track/click?id=...&to=...` | No | Click tracking + redirect |
 
 ## Notes
