@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
   }
 
   if (target) {
-    return NextResponse.redirect(target, { status: 302 });
+    return NextResponse.redirect(target, { status: 302, headers: { 'Access-Control-Allow-Origin': '*' } });
   }
-  return NextResponse.json({ success: true, clicked: true }, { status: 400 });
+  return NextResponse.json({ success: true, clicked: true }, { status: 400, headers: { 'Access-Control-Allow-Origin': '*' } });
 }

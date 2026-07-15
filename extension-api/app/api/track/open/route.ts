@@ -26,6 +26,7 @@ export async function GET(req: NextRequest) {
     headers: {
       'Content-Type': 'image/png',
       'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+      'Access-Control-Allow-Origin': '*',
     },
   });
 }
