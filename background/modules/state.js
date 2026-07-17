@@ -5,7 +5,7 @@
 // ========== Global State ==========
 let isRunning = false;
 let isPaused = false;
-let currentTask = null; // 'scraping' | 'emailing' | 'finding' | 'sending_backend' | 'sending_drafts'
+let currentTask = null; // 'scraping' | 'emailing' | 'finding' | 'sending_backend' | 'sending_backend_normal' | 'sending_drafts'
 let targetBatch = [];
 let currentIndex = 0;
 let findOnlyMode = false;
@@ -13,6 +13,7 @@ let useMailmeteor = false;
 let linkedInSafetyTimer = null;
 let completedCount = 0;
 let failedCount = 0;
+let normalLinksMode = false;
 
 // Founder scraping state
 let founderScrapeQueue = [];
@@ -99,6 +100,8 @@ const JFH_State = {
   set findOnlyMode(v) { findOnlyMode = v; },
   get useMailmeteor() { return useMailmeteor; },
   set useMailmeteor(v) { useMailmeteor = v; },
+  get normalLinksMode() { return normalLinksMode; },
+  set normalLinksMode(v) { normalLinksMode = v; },
   get linkedInSafetyTimer() { return linkedInSafetyTimer; },
   set linkedInSafetyTimer(v) { linkedInSafetyTimer = v; },
   get founderScrapeQueue() { return founderScrapeQueue; },

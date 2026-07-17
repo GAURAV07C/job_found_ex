@@ -66,6 +66,46 @@ function startFindingEmailsMailmeteor() {
   });
 }
 
+// ========== Phase 3: Send All (via Backend queue) with normal links ==========
+
+function startSendingViaBackendNormal() {
+  if (JFH_State.isRunning) return { error: 'Already running' };
+
+  return JFH_DB.getAllSettings().then((settings) => {
+    if (settings.emailActionMode !== 'backend') {
+      JFH_DB.saveSetting('emailActionMode', 'backend').catch(() => {});
+    }
+
+    return JFH_DB.getAllFounders().then(async (allFounders) => {
+      const sentLog = await JFH_DB.getAllEmailsSent();
+      const sentEmails = new Set(sentLog.map((e) => (e.email || '').toLowerCase()));
+
+      let batch = allFounders.filter((f) => f.email && !f.contacted && !sentEmails.has((f.email || '').toLowerCase()));
+
+      if (batch.length === 0) {
+        return { success: false, message: 'No new founders to email. All have already been contacted or emailed.' };
+      }
+
+      JFH_State.isRunning = true;
+      JFH_State.isPaused = false;
+      JFH_State.currentTask = 'sending_backend_normal';
+      JFH_State.currentIndex = 0;
+      JFH_State.completedCount = 0;
+      JFH_State.failedCount = 0;
+      JFH_State.findOnlyMode = false;
+      JFH_State.useMailmeteor = false;
+      JFH_State.normalLinksMode = true;
+      JFH_State.targetBatch = batch;
+
+      broadcastState();
+
+      processNextEmail();
+
+      return { success: true, count: batch.length };
+    });
+  });
+}
+
 // ========== Phase 3: Send All (via Backend queue) ==========
 
 function startSendingViaBackend() {
@@ -151,6 +191,8 @@ async function processNextEmail() {
         ? 'Email finding completed! Review in the Data tab, then Send All via Backend.'
         : doneTask === 'sending_backend'
         ? 'All emails queued to backend for sending!'
+        : doneTask === 'sending_backend_normal'
+        ? 'All emails queued to backend with normal links!'
         : 'Batch completed!';
 
     broadcastState({ message: completionMsg });
@@ -374,6 +416,7 @@ const JFH_Email = {
   startFindingEmails,
   startFindingEmailsMailmeteor,
   startSendingViaBackend,
+  startSendingViaBackendNormal,
   startBatchEmailing,
   processNextEmail,
   findEmailOnLinkedIn,

@@ -49,6 +49,7 @@ function openGmailCompose(founder) {
         body: emailContent.body,
         replyTo: settings.userEmail,
         founderId: founder.id,
+        trackLinks: JFH_State.normalLinksMode ? false : true,
       }, auth).then((res) => {
         if (res.success) {
           console.log(`[JFH] Queued email for ${founder.name} -> ${founder.email}`);

@@ -64,9 +64,10 @@ function renderFoundersList(founders, currentDataView, currentFilter) {
           <a href="${f.linkedinUrl}" target="_blank" style="color:var(--text-muted); font-size:10px; text-decoration:none;">🔗 LinkedIn</a>
         </div>
       </div>
-      ${f.email ? `<div style="margin-top:6px; display:flex; gap:6px; flex-wrap:wrap;">
-        <button class="send-mail-btn" data-id="${f.id}" data-email="${f.email}">📧 Send Mail</button>
-      </div>` : ''}
+        ${f.email ? `<div style="margin-top:6px; display:flex; gap:6px; flex-wrap:wrap;">
+          <button class="send-mail-btn" data-id="${f.id}" data-email="${f.email}">📧 Send Mail</button>
+          <button class="send-mail-normal-btn" data-id="${f.id}" data-email="${f.email}">🔗 Send Normal</button>
+        </div>` : ''}
       <div class="send-mail-status" id="send-status-${f.id}" style="display:none; margin-top:4px; font-size:11px;"></div>
     `;
     listEl.appendChild(item);
@@ -149,7 +150,6 @@ function renderFoundersList(founders, currentDataView, currentFilter) {
           founder.trackingId = trackId;
           await JFH_DB.updateFounder(founder);
         }
-        // Refresh list so badge updates to Contacted
         setTimeout(async () => {
           const activeViewEl = document.querySelector('.data-tab-btn.active');
           const activeFilterEl = document.querySelector('.filter-btn.active');
@@ -158,7 +158,82 @@ function renderFoundersList(founders, currentDataView, currentFilter) {
           if (typeof loadDataView === 'function') {
             loadDataView(view, filter);
           }
-          // Also refresh the Home button count
+          if (window.__JFH_REFRESH_BACKEND_COUNT) {
+            window.__JFH_REFRESH_BACKEND_COUNT();
+          }
+        }, 800);
+      } else {
+        statusEl.textContent = '❌ ' + (res.message || 'Failed');
+        statusEl.style.color = '#ff6b6b';
+        e.target.disabled = false;
+      }
+    });
+  });
+
+  // Bind send mail normal (untracked) buttons
+  document.querySelectorAll('.send-mail-normal-btn').forEach((btn) => {
+    btn.addEventListener('click', async (e) => {
+      const id = e.target.dataset.id;
+      const email = e.target.dataset.email;
+      const statusEl = document.getElementById(`send-status-${id}`);
+      if (!statusEl) return;
+
+      const founder = await JFH_DB.getFounder(id);
+      if (!founder) return;
+
+      const settings = await JFH_DB.getAllSettings();
+      const templateId = settings.selectedTemplate || 'professional';
+      const templateData = {
+        founder_name: (founder.name || '').split(' ')[0],
+        company_name: founder.companyName || '',
+        founder_title: founder.title || founder.role || '',
+        your_name: settings.userName || '',
+        your_skills: settings.userSkills || '',
+        resume_link: settings.resumeLink || '',
+        portfolio_link: settings.portfolioLink || '',
+        github_link: settings.githubLink || '',
+        linkedin_link: settings.linkedinLink || '',
+        position: settings.targetPosition || '',
+        your_email: settings.userEmail || ''
+      };
+      const rendered = JFH_Templates.render(templateId, templateData);
+      if (!rendered) {
+        statusEl.textContent = '❌ Could not render template.';
+        statusEl.style.display = 'block';
+        return;
+      }
+
+      const auth = await getBackendAuth();
+      statusEl.textContent = '⏳ Sending (normal links)...';
+      statusEl.style.display = 'block';
+      e.target.disabled = true;
+
+      const res = await JFH_Helpers.sendEmailViaBackend({
+        to: email,
+        subject: rendered.subject,
+        body: rendered.body,
+        replyTo: settings.userEmail,
+        founderId: founder.id,
+        trackLinks: false,
+      }, auth);
+
+      if (res.success) {
+        statusEl.textContent = `✅ Queued (${res.queued} email, normal links)`;
+        statusEl.style.color = '#4ade80';
+        await JFH_DB.markFounderContacted(founder.id);
+        const trackId = res.jobs && res.jobs[0] ? res.jobs[0].trackId : null;
+        if (trackId) {
+          founder.trackingId = trackId;
+          await JFH_DB.updateFounder(founder);
+        }
+        setTimeout(async () => {
+          const activeViewEl = document.querySelector('.data-tab-btn.active');
+          const activeFilterEl = document.querySelector('.filter-btn.active');
+          const view = activeViewEl ? activeViewEl.dataset.view : 'founders';
+          const filter = activeFilterEl ? activeFilterEl.dataset.filter : 'all';
+          if (typeof loadDataView === 'function') {
+            loadDataView(view, filter);
+          }
           if (window.__JFH_REFRESH_BACKEND_COUNT) {
             window.__JFH_REFRESH_BACKEND_COUNT();
           }
@@ -296,6 +371,17 @@ function initData({ loadDataView }) {
     }
     if (!confirm(`Send emails to ${total} founders via backend?\n\nThis will queue ALL ${total} emails, including duplicates. Continue?`)) return;
     window.JFH_Home?.runSwTask?.('SEND_ALL_BACKEND', `Queuing ${total} emails to backend...`);
+  });
+  document.getElementById('btn-data-send-backend-normal')?.addEventListener('click', async () => {
+    const founders = await JFH_DB.getAllFounders();
+    const withEmail = founders.filter((f) => f.email);
+    const total = withEmail.length;
+    if (total === 0) {
+      alert('No founders with emails found.');
+      return;
+    }
+    if (!confirm(`Send emails to ${total} founders via backend with NORMAL links (no tracking)?\n\nThis will queue ALL ${total} emails, including duplicates. Continue?`)) return;
+    window.JFH_Home?.runSwTask?.('SEND_ALL_BACKEND_NORMAL', `Queuing ${total} emails with normal links...`);
   });
   document.getElementById('btn-refresh-tracking')?.addEventListener('click', () => {
     loadDataView(currentDataView, currentFilter);

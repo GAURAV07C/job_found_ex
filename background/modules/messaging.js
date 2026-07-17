@@ -53,6 +53,10 @@ function setupMessageRouter() {
         JFH_Email.startSendingViaBackend().then(sendResponse);
         return true;
 
+      case 'SEND_ALL_BACKEND_NORMAL':
+        JFH_Email.startSendingViaBackendNormal().then(sendResponse);
+        return true;
+
       case 'SCRAPE_ALL_FOUNDERS':
         JFH_Scraper.startFounderScraping().then(sendResponse);
         return true;

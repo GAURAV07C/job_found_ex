@@ -77,7 +77,7 @@ async function enqueueEmails(emails) {
         founderId: mail.founderId,
         subject: mail.subject,
       });
-      const html = track.buildTrackedHtml(mail.body, trackId);
+      const html = track.buildTrackedHtml(mail.body, trackId, { trackLinks: mail.trackLinks !== false });
       return {
         name: 'send-email',
         data: { ...mail, html, trackId },

@@ -106,9 +106,38 @@ function initHome({ updateStats, updateUIState, runSwTask, refreshBackendSendBut
   const findEmailsBtn = document.getElementById('btn-find-emails');
   const findEmailsMmBtn = document.getElementById('btn-find-emails-mm');
   const sendBackendBtn = document.getElementById('btn-send-backend');
+  const sendBackendNormalBtn = document.getElementById('btn-send-backend-normal');
 
-  if (findEmailsBtn) {
-    findEmailsBtn.addEventListener('click', () => runSwTask('FIND_ALL_EMAILS', 'Finding emails...'));
+  if (sendBackendBtn) {
+    sendBackendBtn.addEventListener('click', async () => {
+      const founders = await JFH_DB.getAllFounders();
+      const sentLog = await JFH_DB.getAllEmailsSent();
+      const sentEmails = new Set(sentLog.map((e) => (e.email || '').toLowerCase()));
+      const eligible = founders.filter((f) => f.email && !f.contacted && !sentEmails.has((f.email || '').toLowerCase()));
+
+      if (eligible.length === 0) {
+        alert('No new founders to email. All have already been contacted or emailed.');
+        return;
+      }
+
+      runSwTask('SEND_ALL_BACKEND', `Queuing ${eligible.length} emails to backend...`);
+    });
+  }
+
+  if (sendBackendNormalBtn) {
+    sendBackendNormalBtn.addEventListener('click', async () => {
+      const founders = await JFH_DB.getAllFounders();
+      const sentLog = await JFH_DB.getAllEmailsSent();
+      const sentEmails = new Set(sentLog.map((e) => (e.email || '').toLowerCase()));
+      const eligible = founders.filter((f) => f.email && !f.contacted && !sentEmails.has((f.email || '').toLowerCase()));
+
+      if (eligible.length === 0) {
+        alert('No new founders to email. All have already been contacted or emailed.');
+        return;
+      }
+
+      runSwTask('SEND_ALL_BACKEND_NORMAL', `Queuing ${eligible.length} emails with normal links...`);
+    });
   }
   if (findEmailsMmBtn) {
     findEmailsMmBtn.addEventListener('click', () => runSwTask('FIND_ALL_EMAILS_MAILMETEOR', 'Finding emails (Mailmeteor)...'));
@@ -142,7 +171,9 @@ function initHome({ updateStats, updateUIState, runSwTask, refreshBackendSendBut
   async function refreshBackendSendButton() {
     const sendBtn = document.getElementById('btn-send-backend');
     const dataSendBtn = document.getElementById('btn-data-send-backend');
-    if (!sendBtn && !dataSendBtn) return;
+    const sendNormalBtn = document.getElementById('btn-send-backend-normal');
+    const dataSendNormalBtn = document.getElementById('btn-data-send-backend-normal');
+    if (!sendBtn && !dataSendBtn && !sendNormalBtn && !dataSendNormalBtn) return;
 
     try {
       const founders = await JFH_DB.getAllFounders();
@@ -158,6 +189,9 @@ function initHome({ updateStats, updateUIState, runSwTask, refreshBackendSendBut
       const label = `🚀 Step 2: Send All via Backend (${total} with email, ${eligible} new, ${contacted} contacted, ${alreadySent} already sent)`;
       if (sendBtn) { sendBtn.textContent = label; sendBtn.disabled = total === 0; }
       if (dataSendBtn) { dataSendBtn.textContent = `🚀 Send All (Backend) (${total})`; dataSendBtn.disabled = total === 0; }
+      const normalLabel = `🔗 Step 2b: Send All via Backend (Normal Links) (${total} with email, ${eligible} new)`;
+      if (sendNormalBtn) { sendNormalBtn.textContent = normalLabel; sendNormalBtn.disabled = total === 0; }
+      if (dataSendNormalBtn) { dataSendNormalBtn.textContent = `🔗 Send All (Normal Links) (${total})`; dataSendNormalBtn.disabled = total === 0; }
     } catch (e) {
       console.warn('[UI] could not refresh backend send count:', e);
     }

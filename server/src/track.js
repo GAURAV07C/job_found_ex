@@ -26,17 +26,25 @@ async function saveMeta(trackId, meta) {
 /**
  * Take a plaintext email body and return HTML with:
  *  - line breaks as <br>
- *  - every http(s) link rewritten through the click tracker
- *  - a 1x1 invisible open-tracking pixel appended
+ *  - every http(s) link rewritten through the click tracker (unless trackLinks is false)
+ *  - a 1x1 invisible open-tracking pixel appended (unless trackLinks is false)
  * @param {string} body
  * @param {string} trackId
+ * @param {Object} [options]
+ * @param {boolean} [options.trackLinks=true]
  * @returns {string}
  */
-function buildTrackedHtml(body, trackId) {
+function buildTrackedHtml(body, trackId, options = {}) {
+  const trackLinks = options.trackLinks !== false;
+  const html = (body || '').replace(/\n/g, '<br>');
+
+  if (!trackLinks) {
+    return html;
+  }
+
   const openPixel = `${config.publicBaseUrl}/track/open/${trackId}.png`;
   const clickBase = `${config.publicBaseUrl}/track/click/`;
 
-  // Rewrite plaintext links to go through the click tracker
   const urlRegex = /https?:\/\/[^\s<>"')]+/g;
   const trackedText = (body || '').replace(urlRegex, (url) => {
     const linkId = generateTrackingId();
@@ -44,9 +52,9 @@ function buildTrackedHtml(body, trackId) {
     return `${clickBase}${linkId}?to=${encodeURIComponent(url)}`;
   });
 
-  const html = (trackedText || '').replace(/\n/g, '<br>');
+  const trackedHtml = (trackedText || '').replace(/\n/g, '<br>');
   const spacer = `data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7`;
-  return `${html}<br><img src="${spacer}" width="1" height="1" border="0" alt="" /><img src="${openPixel}" width="1" height="1" border="0" alt="" style="border:0; outline:none; text-decoration:none;" />`;
+  return `${trackedHtml}<br><img src="${spacer}" width="1" height="1" border="0" alt="" /><img src="${openPixel}" width="1" height="1" border="0" alt="" style="border:0; outline:none; text-decoration:none;" />`;
 }
 
 async function recordOpen(trackId) {

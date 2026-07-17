@@ -39,18 +39,22 @@ export async function POST(req: NextRequest) {
 
     for (const mail of emails) {
       const trackId = 't_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
-      const openPixel = `${origin}/api/track/open?id=${trackId}`;
-      const clickBase = `${origin}/api/track/click?id=${trackId}&to=`;
+      const trackLinks = mail.trackLinks !== false;
+      const openPixel = trackLinks ? `${origin}/api/track/open?id=${trackId}` : '';
+      const clickBase = trackLinks ? `${origin}/api/track/click?id=${trackId}&to=` : '';
 
       const urlRegex = /https?:\/\/[^\s<>"')]+/g;
       const trackedText = (mail.body || '').replace(urlRegex, (url: string) => {
+        if (!trackLinks) return url;
         const linkId = 't_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
         return `${origin}/api/track/click?id=${linkId}&to=${encodeURIComponent(url)}`;
       });
 
       const html = (trackedText || '').replace(/\n/g, '<br>');
       const spacer = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-      const trackedHtml = `${html}<br><img src="${spacer}" width="1" height="1" border="0" alt="" /><img src="${openPixel}" width="1" height="1" border="0" alt="" style="border:0; outline:none; text-decoration:none;" />`;
+      const trackedHtml = trackLinks
+        ? `${html}<br><img src="${spacer}" width="1" height="1" border="0" alt="" /><img src="${openPixel}" width="1" height="1" border="0" alt="" style="border:0; outline:none; text-decoration:none;" />`
+        : html;
 
       jobs.push({ ...mail, html: trackedHtml, trackId });
     }
