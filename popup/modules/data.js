@@ -283,6 +283,9 @@ function initData({ loadDataView }) {
   document.getElementById('btn-data-find-emails')?.addEventListener('click', () => {
     window.JFH_Home?.runSwTask?.('FIND_ALL_EMAILS', 'Finding emails...');
   });
+  document.getElementById('btn-data-find-emails-mm')?.addEventListener('click', () => {
+    window.JFH_Home?.runSwTask?.('FIND_ALL_EMAILS_MAILMETEOR', 'Finding emails (Mailmeteor)...');
+  });
   document.getElementById('btn-data-send-backend')?.addEventListener('click', async () => {
     const founders = await JFH_DB.getAllFounders();
     const withEmail = founders.filter((f) => f.email);

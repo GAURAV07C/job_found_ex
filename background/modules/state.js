@@ -9,6 +9,7 @@ let currentTask = null; // 'scraping' | 'emailing' | 'finding' | 'sending_backen
 let targetBatch = [];
 let currentIndex = 0;
 let findOnlyMode = false;
+let useMailmeteor = false;
 let linkedInSafetyTimer = null;
 let completedCount = 0;
 let failedCount = 0;
@@ -96,6 +97,8 @@ const JFH_State = {
   set currentIndex(v) { currentIndex = v; },
   get findOnlyMode() { return findOnlyMode; },
   set findOnlyMode(v) { findOnlyMode = v; },
+  get useMailmeteor() { return useMailmeteor; },
+  set useMailmeteor(v) { useMailmeteor = v; },
   get linkedInSafetyTimer() { return linkedInSafetyTimer; },
   set linkedInSafetyTimer(v) { linkedInSafetyTimer = v; },
   get founderScrapeQueue() { return founderScrapeQueue; },

@@ -131,6 +131,15 @@ header {
   background: rgba(99, 102, 241, 0.1);
 }
 
+.stat-card.success {
+  border-color: var(--success);
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.stat-card.success .stat-value {
+  color: var(--success);
+}
+
 .stat-value {
   font-size: 20px;
   font-weight: 700;

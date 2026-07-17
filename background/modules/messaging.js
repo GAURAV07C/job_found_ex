@@ -45,6 +45,10 @@ function setupMessageRouter() {
         JFH_Email.startFindingEmails().then(sendResponse);
         return true;
 
+      case 'FIND_ALL_EMAILS_MAILMETEOR':
+        JFH_Email.startFindingEmailsMailmeteor().then(sendResponse);
+        return true;
+
       case 'SEND_ALL_BACKEND':
         JFH_Email.startSendingViaBackend().then(sendResponse);
         return true;

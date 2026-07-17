@@ -12,6 +12,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('stat-founders').textContent = stats.totalFounders;
     document.getElementById('stat-with-email').textContent = stats.foundersWithEmail;
     document.getElementById('stat-contacted').textContent = stats.foundersContacted;
+    document.getElementById('stat-pending').textContent = stats.foundersPending;
+    document.getElementById('stat-remaining').textContent = stats.foundersRemaining;
 
     if (stats.totalCompanies > 0) {
       const btn = document.getElementById('btn-find-founders');
@@ -66,9 +68,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (isRunning && total > 0) {
         detailEl.style.display = 'block';
         if (currentTask === 'finding') {
-          const found = completedCount;
-          const notFound = failedCount;
-          const remaining = Math.max(total - currentIndex, 0);
+          const found = completed;
+          const notFound = failed;
+          const remaining = Math.max(total - current, 0);
           detailEl.textContent = `✅ Found: ${found}  ❌ Not found: ${notFound}  ⏳ Remaining: ${remaining}`;
           detailEl.style.color = '#4ade80';
         } else if (currentTask === 'sending_backend') {
@@ -253,6 +255,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   JFH_Home.initHome({ updateStats, updateUIState, runSwTask, refreshBackendSendButton });
+  // Expose shared helpers so other tabs (e.g. Data tab buttons) can trigger SW tasks
+  if (window.JFH_Home) {
+    window.JFH_Home.runSwTask = runSwTask;
+    window.JFH_Home.updateStats = updateStats;
+  }
   JFH_Data.initData({ loadDataView });
   JFH_ModalModule.initModal({ loadDataView, updateStats, refreshBackendSendButton });
   JFH_DashboardModule.initDashboard();

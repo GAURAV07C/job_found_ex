@@ -50,6 +50,14 @@
             <span class="stat-value" id="stat-contacted">0</span>
             <span class="stat-label">Contacted</span>
           </div>
+          <div class="stat-card warning">
+            <span class="stat-value" id="stat-pending">0</span>
+            <span class="stat-label">Pending</span>
+          </div>
+          <div class="stat-card success">
+            <span class="stat-value" id="stat-remaining">0</span>
+            <span class="stat-label">Yet to Contact</span>
+          </div>
         </div>
 
         <div class="action-panel">
@@ -101,6 +109,7 @@
 
           <div class="main-actions">
             <button id="btn-find-emails" class="btn secondary full-width">🔍 Step 1: Find Emails (LinkedIn)</button>
+            <button id="btn-find-emails-mm" class="btn secondary full-width mt-10">📨 Step 1b: Find Emails (Mailmeteor)</button>
             <button id="btn-send-backend" class="btn primary full-width mt-10">🚀 Step 2: Send All via Backend</button>
             <div class="control-buttons" style="display: none;" id="batch-controls">
               <button id="btn-pause-batch" class="btn warning">Pause</button>
@@ -122,6 +131,7 @@
 
         <div class="outreach-actions" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;">
           <button id="btn-data-find-emails" class="btn small secondary">🔍 Find Emails</button>
+          <button id="btn-data-find-emails-mm" class="btn small secondary">📨 Find (Mailmeteor)</button>
           <button id="btn-data-send-backend" class="btn small primary">🚀 Send All (Backend)</button>
           <button id="btn-refresh-tracking" class="btn small outline">🔄 Refresh Tracking</button>
           <button id="btn-toggle-debug" class="btn small outline">🐛 Debug</button>

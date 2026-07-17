@@ -104,10 +104,14 @@ function initHome({ updateStats, updateUIState, runSwTask, refreshBackendSendBut
 
   // New 3-phase backend flow
   const findEmailsBtn = document.getElementById('btn-find-emails');
+  const findEmailsMmBtn = document.getElementById('btn-find-emails-mm');
   const sendBackendBtn = document.getElementById('btn-send-backend');
 
   if (findEmailsBtn) {
     findEmailsBtn.addEventListener('click', () => runSwTask('FIND_ALL_EMAILS', 'Finding emails...'));
+  }
+  if (findEmailsMmBtn) {
+    findEmailsMmBtn.addEventListener('click', () => runSwTask('FIND_ALL_EMAILS_MAILMETEOR', 'Finding emails (Mailmeteor)...'));
   }
   if (sendBackendBtn) {
     sendBackendBtn.addEventListener('click', async () => {

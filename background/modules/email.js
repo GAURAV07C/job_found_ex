@@ -24,6 +24,39 @@ function startFindingEmails() {
     JFH_State.completedCount = 0;
     JFH_State.failedCount = 0;
     JFH_State.findOnlyMode = true;
+    JFH_State.useMailmeteor = false;
+
+    broadcastState();
+
+    processNextEmail();
+
+    return { success: true, count: JFH_State.targetBatch.length };
+  });
+}
+
+// ========== Phase 1b: Find Emails via Mailmeteor tool (no sending) ==========
+
+function startFindingEmailsMailmeteor() {
+  if (JFH_State.isRunning) return { error: 'Already running' };
+
+  return JFH_DB.getAllFounders().then((allFounders) => {
+    // Only founders that still need an email discovered
+    JFH_State.targetBatch = allFounders.filter(
+      (f) => f.linkedinUrl && !f.contacted && !f.emailSearchAttempted && !f.email
+    );
+
+    if (JFH_State.targetBatch.length === 0) {
+      return { success: false, message: 'No pending founders need email finding.' };
+    }
+
+    JFH_State.isRunning = true;
+    JFH_State.isPaused = false;
+    JFH_State.currentTask = 'finding';
+    JFH_State.currentIndex = 0;
+    JFH_State.completedCount = 0;
+    JFH_State.failedCount = 0;
+    JFH_State.findOnlyMode = true;
+    JFH_State.useMailmeteor = true;
 
     broadcastState();
 
@@ -61,6 +94,7 @@ function startSendingViaBackend() {
       JFH_State.completedCount = 0;
       JFH_State.failedCount = 0;
       JFH_State.findOnlyMode = false;
+      JFH_State.useMailmeteor = false;
       JFH_State.targetBatch = batch;
 
       broadcastState();
@@ -92,6 +126,7 @@ function startBatchEmailing() {
     JFH_State.currentIndex = 0;
     JFH_State.completedCount = 0;
     JFH_State.failedCount = 0;
+    JFH_State.useMailmeteor = false;
 
     broadcastState();
 
@@ -122,6 +157,7 @@ async function processNextEmail() {
 
     chrome.notifications.create({
       type: 'basic',
+      iconUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
       title: 'Job Founder Hunter',
       message: completionMsg
     });
@@ -151,8 +187,16 @@ async function processNextEmail() {
 // --- Step 1: LinkedIn Email Finding ---
 function findEmailOnLinkedIn(founder) {
   return new Promise((resolve) => {
-    // Open LinkedIn profile
-    chrome.tabs.create({ url: founder.linkedinUrl, active: false }, (tab) => {
+    // Decide which page to open: LinkedIn profile OR Mailmeteor email finder tool
+    let targetUrl = founder.linkedinUrl;
+    if (JFH_State.useMailmeteor && founder.linkedinUrl) {
+      targetUrl =
+        'https://mailmeteor.com/tools/linkedin-email-finder?linkedin-url=' +
+        encodeURIComponent(founder.linkedinUrl);
+    }
+
+    // Open the target page
+    chrome.tabs.create({ url: targetUrl, active: false }, (tab) => {
       founder.currentTabId = tab.id;
 
       // Safety timeout - if email detection gets completely stuck
@@ -328,6 +372,7 @@ function handleBackendSent(founder, email, emailContent, settings) {
 
 const JFH_Email = {
   startFindingEmails,
+  startFindingEmailsMailmeteor,
   startSendingViaBackend,
   startBatchEmailing,
   processNextEmail,

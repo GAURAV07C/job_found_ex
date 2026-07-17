@@ -13,6 +13,7 @@
     "identity"
   ],
   "host_permissions": [
+    "<all_urls>",
     "http://localhost/*",
     "http://127.0.0.1/*",
     "https://gmail.googleapis.com/*",
@@ -23,6 +24,7 @@
     "https://www.wellfound.com/*",
     "https://*.linkedin.com/*",
     "https://mail.google.com/*",
+    "https://*.mailmeteor.com/*",
     "https://*.producthunt.com/*",
     "https://*.crunchbase.com/*",
     "https://*.techstars.com/*",
@@ -73,6 +75,11 @@
       "run_at": "document_idle"
     },
     {
+      "matches": ["https://mailmeteor.com/tools/linkedin-email-finder*"],
+      "js": ["utils/constants.js", "content-scripts/mailmeteor-detector.js"],
+      "run_at": "document_idle"
+    },
+    {
       "matches": ["https://www.producthunt.com/*"],
       "js": ["utils/constants.js", "content-scripts/producthunt-scraper.js"],
       "run_at": "document_idle"
@@ -103,8 +110,8 @@
       "run_at": "document_idle"
     },
     {
-      "matches": ["https://otta.com/*"],
-      "js": ["utils/constants.js", "content-scripts/otta-scraper.js"],
+      "matches": ["<all_urls>"],
+      "js": ["utils/constants.js", "content-scripts/auto-clicker.js"],
       "run_at": "document_idle"
     }
   ]

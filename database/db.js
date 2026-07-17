@@ -400,6 +400,7 @@ const JFH_DB = {
       totalFounders: founders.length,
       foundersWithEmail: founders.filter(f => f.email).length,
       foundersContacted: founders.filter(f => f.contacted).length,
+      foundersPending: founders.filter(f => !f.contacted).length,
       foundersRemaining: founders.filter(f => !f.contacted && f.email).length,
       totalEmailsSent: emailsSent.length,
       totalAppliedJobs: appliedJobs.length,
