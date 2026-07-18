@@ -14,11 +14,13 @@
 
   // ========== Inject floating action button ==========
   function injectUI() {
+    if (document.getElementById('jfh-wf-fab')) return;
+
     const fab = document.createElement('div');
     fab.id = 'jfh-wf-fab';
     fab.innerHTML = `
       <button id="jfh-wf-scrape-btn" title="Scrape companies with Job Founder Hunter">
-        🔍 JFH Scrape
+        🔍 Scrape Wellfound
       </button>
       <div id="jfh-wf-status" style="display:none;"></div>
     `;
@@ -40,13 +42,14 @@
       background: linear-gradient(135deg, #00B894, #00CEC9);
       color: white;
       border: none;
-      padding: 12px 20px;
+      padding: 14px 24px;
       border-radius: 50px;
-      font-size: 14px;
-      font-weight: 600;
+      font-size: 16px;
+      font-weight: 700;
       cursor: pointer;
       box-shadow: 0 4px 20px rgba(0, 184, 148, 0.4);
       transition: all 0.3s ease;
+      letter-spacing: 0.3px;
     `;
 
     btn.addEventListener('mouseenter', () => {
@@ -98,56 +101,134 @@
 
   function isStartupDetailPage() {
     const path = window.location.pathname;
-    return path.startsWith('/company/') || path.match(/^\/[a-z0-9-]+$/i);
+    return path.startsWith('/company/') || (path.match(/^\/[a-z0-9-]+$/i) && !path.includes('/jobs') && !path.includes('/startups') && path.length > 5);
   }
 
-  // ========== Scrape startup list ==========
+   // ========== Scrape startup list ==========
   async function scrapeStartupList() {
-    showStatus('📜 Loading startups...', 'progress');
+    const isJobsPage = window.location.pathname === '/jobs';
 
-    // Scroll to load more
-    await scrollToLoadAll(30);
-
-    showStatus('🔍 Extracting startup data...', 'progress');
+    if (isJobsPage) {
+      showStatus('🔍 Extracting startup data...', 'progress');
+    } else {
+      showStatus('📜 Loading startups...', 'progress');
+      await scrollToLoadAll(30);
+      showStatus('🔍 Extracting startup data...', 'progress');
+    }
 
     const companies = [];
     const seen = new Set();
 
-    // Wellfound startup cards
-    const cards = document.querySelectorAll(
-      '[data-test="startup-card"], ' +
-      'a[href*="/company/"], ' +
-      '[class*="startup-link"], ' +
-      '[class*="StartupResult"], ' +
-      'div[class*="job"] a[href*="/company/"]'
-    );
+    // Strategy 1: Extract from company logo images (most reliable)
+    const companyLogos = document.querySelectorAll('img[alt*="company logo"], img[alt*="Company logo"]');
+    
+    companyLogos.forEach(img => {
+      const link = img.closest('a[href*="/company/"]');
+      if (!link) return;
 
-    cards.forEach(card => {
-      let href = card.getAttribute('href') || card.querySelector('a')?.getAttribute('href');
+      let href = link.getAttribute('href');
       if (!href || seen.has(href)) return;
       seen.add(href);
 
-      // Ensure full URL
       if (href.startsWith('/')) {
         href = `https://www.wellfound.com${href}`;
       }
 
-      const nameEl = card.querySelector('h2, h3, h4, [class*="name"], [class*="title"]');
-      const descEl = card.querySelector('[class*="tagline"], [class*="description"], p');
+      // Extract company name from image alt text
+      let name = img.alt.replace(' company logo', '').replace(' Company logo', '').replace(' logo', '').trim();
+      
+      // If alt text doesn't work, try link text
+      if (!name || name.length < 2) {
+        name = link.textContent?.trim() || '';
+      }
 
-      const name = nameEl?.textContent?.trim() || '';
-      const description = descEl?.textContent?.trim() || '';
-
-      if (name) {
+      if (name && name.length > 1 && name.length < 200) {
         companies.push({
-          name,
-          description,
+          name: name.replace(/\s+/g, ' ').trim(),
+          description: '',
           sourceUrl: href,
           source: 'wellfound',
           status: 'scraped',
         });
       }
     });
+
+    // Strategy 2: Extract from startup cards (trending section)
+    if (companies.length === 0) {
+      const startupCards = document.querySelectorAll(
+        'div.rounded-lg.border.border-gray-400,' +
+        'div.inline-flex.flex-col.rounded-lg.border.border-gray-400,' +
+        '[class*="startup-card"]'
+      );
+
+      startupCards.forEach(card => {
+        const companyLink = card.querySelector('a[href*="/company/"]:not([href*="/jobs"])');
+        if (!companyLink) return;
+
+        let href = companyLink.getAttribute('href');
+        if (!href || seen.has(href)) return;
+        seen.add(href);
+
+        if (href.startsWith('/')) {
+          href = `https://www.wellfound.com${href}`;
+        }
+
+        let name = companyLink.textContent?.trim() || '';
+        const nameEl = card.querySelector('h2, h3, h4');
+        if (!name && nameEl) {
+          name = nameEl.textContent?.trim() || '';
+        }
+
+        const descEl = card.querySelector(
+          'div[class*="tagline"], div[class*="description"], p, [class*="editorial"]'
+        );
+        const description = descEl?.textContent?.trim() || '';
+
+        if (name && name.length > 1 && name.length < 200 && !name.includes('open positions')) {
+          companies.push({
+            name: name.replace(/\s+/g, ' ').trim(),
+            description: description.replace(/\s+/g, ' ').trim(),
+            sourceUrl: href,
+            source: 'wellfound',
+            status: 'scraped',
+          });
+        }
+      });
+    }
+
+    // Strategy 3: Extract from all company links (final fallback)
+    if (companies.length === 0) {
+      const allCompanyLinks = document.querySelectorAll('a[href*="/company/"]:not([href*="/jobs"])');
+      allCompanyLinks.forEach(link => {
+        let href = link.getAttribute('href');
+        if (!href || seen.has(href)) return;
+        seen.add(href);
+
+        if (href.startsWith('/')) {
+          href = `https://www.wellfound.com${href}`;
+        }
+
+        let name = link.textContent?.trim() || '';
+        
+        // Try to get name from nearby image alt text
+        if (!name) {
+          const img = link.querySelector('img[alt*="company logo"], img[alt*="Company logo"]');
+          if (img && img.alt) {
+            name = img.alt.replace(' company logo', '').replace(' Company logo', '').replace(' logo', '').trim();
+          }
+        }
+
+        if (name && name.length > 1 && name.length < 200) {
+          companies.push({
+            name: name.replace(/\s+/g, ' ').trim(),
+            description: '',
+            sourceUrl: href,
+            source: 'wellfound',
+            status: 'scraped',
+          });
+        }
+      });
+    }
 
     return companies;
   }
@@ -184,38 +265,33 @@
 
     // ===== Find founders/team =====
     // Wellfound shows team members on company pages
-    const teamSections = document.querySelectorAll(
-      '[class*="team"], [class*="founders"], [class*="people"], [class*="members"]'
+    const founderCards = document.querySelectorAll(
+      '[class*="styles_identity__"], [class*="styles_section__"]'
     );
 
-    teamSections.forEach(section => {
-      const members = section.querySelectorAll(
-        '[class*="member"], [class*="person"], [class*="card"], [class*="founder"]'
-      );
+    const seenMembers = new Set();
+    
+    founderCards.forEach(card => {
+      const nameEl = card.querySelector('[class*="styles_name__"], [class*="styles_name"]');
+      const titleEl = card.querySelector('[class*="styles_byline__"], [class*="styles_byline"]');
+      
+      if (!nameEl) return;
+      
+      const name = nameEl.textContent?.trim() || '';
+      const title = titleEl?.textContent?.trim() || '';
+      
+      if (!name || seenMembers.has(name)) return;
+      seenMembers.add(name);
 
-      members.forEach(member => {
-        const name = member.querySelector(
-          'h3, h4, [class*="name"], [class*="Name"], a[class*="name"]'
-        )?.textContent?.trim() || '';
-        
-        const title = member.querySelector(
-          '[class*="role"], [class*="title"], [class*="Role"], small'
-        )?.textContent?.trim() || '';
+      const linkedinLink = card.querySelector('a[href*="linkedin.com/in/"]')?.href || '';
 
-        const linkedinLink = member.querySelector('a[href*="linkedin.com/in/"]')?.href || '';
-
-        if (name) {
-          const roleInfo = detectFounderRole(title);
-          if (roleInfo.isFounder || title === '') {
-            company.founders.push({
-              name,
-              title: title || 'Team Member',
-              role: roleInfo.isFounder ? roleInfo.role : 'Team Member',
-              linkedinUrl: linkedinLink,
-              companyName: company.name,
-            });
-          }
-        }
+      const roleInfo = detectFounderRole(title);
+      company.founders.push({
+        name,
+        title: title || 'Team Member',
+        role: roleInfo.isFounder ? roleInfo.role : 'Team Member',
+        linkedinUrl: linkedinLink,
+        companyName: company.name,
       });
     });
 
@@ -246,6 +322,15 @@
     }
 
     return company;
+  }
+
+  function cleanTitle(title) {
+    if (!title) return 'Team Member';
+    let cleaned = title.trim();
+    if (cleaned.includes('•')) {
+      cleaned = cleaned.split('•')[0].trim();
+    }
+    return cleaned || 'Team Member';
   }
 
   function detectFounderRole(title) {
@@ -296,6 +381,7 @@
       if (btn) {
         btn.disabled = true;
         btn.textContent = '⏳ Scraping...';
+        btn.style.opacity = '0.8';
       }
 
       let result;
@@ -330,7 +416,8 @@
 
       if (btn) {
         btn.disabled = false;
-        btn.textContent = '🔍 JFH Scrape';
+        btn.textContent = '🔍 Scrape Wellfound';
+        btn.style.opacity = '1';
       }
     } catch (error) {
       console.error('[JFH] Wellfound scraping error:', error);
@@ -343,10 +430,40 @@
     }
   }
 
+  async function scrapeForFounders(messageData) {
+    const company = await scrapeStartupDetail();
+    
+    const founders = (company.founders || []).map(f => ({
+      name: f.name || '',
+      title: f.title || 'Team Member',
+      role: f.role || 'Team Member',
+      linkedinUrl: f.linkedinUrl || '',
+      companyName: company.name,
+      source: 'wellfound'
+    }));
+
+    chrome.runtime.sendMessage({
+      type: 'COMPANY_FOUNDERS_FOUND',
+      data: {
+        companyId: messageData.companyId,
+        companyName: company.name,
+        founders
+      }
+    });
+
+    return { founders };
+  }
+
   // ========== Message listener ==========
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === 'SCRAPE_PAGE') {
       startScraping().then(() => sendResponse({ success: true }));
+      return true;
+    }
+    if (message.type === 'SCRAPE_COMPANY_DETAIL') {
+      scrapeForFounders(message.data).then((data) => {
+        sendResponse({ success: true, data });
+      });
       return true;
     }
     if (message.type === 'PING') {
@@ -355,11 +472,44 @@
     }
   });
 
-  // Auto-inject UI
+  // Auto-inject UI and auto-start if triggered from extension
+  function tryInjectUI() {
+    if (document.body) {
+      injectUI();
+
+      if (window.location.hash === '#jfh-autoscrape') {
+        setTimeout(() => {
+          startScraping();
+          if (history.replaceState) {
+            history.replaceState(null, '', window.location.href.replace('#jfh-autoscrape', ''));
+          }
+        }, 800);
+      }
+    } else {
+      const observer = new MutationObserver(() => {
+        if (document.body) {
+          injectUI();
+
+          if (window.location.hash === '#jfh-autoscrape') {
+            setTimeout(() => {
+              startScraping();
+              if (history.replaceState) {
+                history.replaceState(null, '', window.location.href.replace('#jfh-autoscrape', ''));
+              }
+            }, 800);
+          }
+
+          observer.disconnect();
+        }
+      });
+      observer.observe(document.documentElement, { childList: true, subtree: true });
+    }
+  }
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', injectUI);
+    document.addEventListener('DOMContentLoaded', tryInjectUI);
   } else {
-    injectUI();
+    tryInjectUI();
   }
 
 })();

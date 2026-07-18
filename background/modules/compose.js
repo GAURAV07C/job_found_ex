@@ -110,7 +110,7 @@ function openGmailTab(founder, emailContent, settings) {
 
 // --- Step 3: Bulk Sending Drafts Flow ---
 function startSendingDraftsFlow() {
-  if (JFH_State.isRunning) return { error: 'Already running' };
+  if (JFH_State.isRunning) return Promise.resolve({ error: 'Already running' });
 
   JFH_State.isRunning = true;
   JFH_State.isPaused = false;
@@ -128,7 +128,7 @@ function startSendingDraftsFlow() {
     });
   });
 
-  return { success: true };
+  return Promise.resolve({ success: true });
 }
 
 async function handleEmailSentConfirm(data) {

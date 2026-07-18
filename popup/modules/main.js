@@ -101,6 +101,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const statusText = document.getElementById('batch-status-text');
     const statusContainer = document.getElementById('batch-progress-container');
     chrome.runtime.sendMessage({ type }, (response) => {
+      if (chrome.runtime.lastError) {
+        console.warn('[JFH] sendMessage error:', chrome.runtime.lastError.message);
+        if (statusContainer) statusContainer.style.display = 'block';
+        if (statusText) statusText.textContent = '❌ ' + chrome.runtime.lastError.message;
+        return;
+      }
       if (response && !response.success && response.message) {
         if (statusContainer) statusContainer.style.display = 'block';
         if (statusText) statusText.textContent = '❌ ' + response.message;
@@ -243,6 +249,33 @@ document.addEventListener('DOMContentLoaded', async () => {
         `;
         listEl.appendChild(item);
       });
+    } else if (view === 'linkedin') {
+      const founders = await JFH_DB.getAllFounders();
+      const linkedInProfiles = founders.filter(f => f.linkedinUrl && f.linkedinUrl.includes('linkedin.com/in/'));
+      
+      if (!linkedInProfiles.length) {
+        listEl.innerHTML = '<div class="empty-state">No LinkedIn profiles saved yet. Use the input box on Home tab to save profiles.</div>';
+        return;
+      }
+      
+      listEl.innerHTML = '';
+      linkedInProfiles.forEach((f) => {
+        const item = document.createElement('div');
+        item.className = 'data-item';
+        item.innerHTML = `
+          <div style="flex:1; padding-right:8px;">
+            <div class="data-item-main">${f.name}</div>
+            <div class="data-item-sub">${f.title || f.role} ${f.companyName ? `@ ${f.companyName}` : ''}</div>
+            <div style="margin-top:4px;">
+              <a href="${f.linkedinUrl}" target="_blank" style="color:var(--primary); font-size:11px; text-decoration:none;">🔗 View LinkedIn Profile</a>
+            </div>
+          </div>
+          <div style="text-align:right;">
+            <span class="data-badge ${f.contacted ? 'success' : f.email ? 'warning' : ''}">${f.contacted ? 'Contacted' : f.email ? 'Email Found' : 'Pending'}</span>
+          </div>
+        `;
+        listEl.appendChild(item);
+      });
     }
   };
 
@@ -267,6 +300,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Initial state request
   chrome.runtime.sendMessage({ type: JFH_CONFIG.MESSAGES.GET_STATS }, (response) => {
+    if (chrome.runtime.lastError) {
+      console.warn('[JFH] sendMessage error:', chrome.runtime.lastError.message);
+      return;
+    }
     if (response && response.state) {
       updateUIState(
         response.state.isRunning,

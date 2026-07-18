@@ -128,6 +128,10 @@ function setupMessageRouter() {
         saveSettings(message.data).then(sendResponse);
         return true;
 
+      case JFH_CONFIG.MESSAGES.SAVE_LINKEDIN_PROFILE:
+        JFH_DB.saveLinkedInProfile(message.data.linkedinUrl, message.data.options || {}).then(sendResponse);
+        return true;
+
       case JFH_CONFIG.MESSAGES.GET_SETTINGS:
         JFH_DB.getAllSettings().then(sendResponse);
         return true;

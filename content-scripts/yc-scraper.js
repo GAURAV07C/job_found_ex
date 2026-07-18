@@ -150,6 +150,7 @@
             rawName = rawName.split('\n')[0].trim();
          }
          name = cleanCompanyName(rawName);
+      }
 
       if (name && name.length > 0) {
         companies.push({

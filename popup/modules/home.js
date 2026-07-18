@@ -11,7 +11,7 @@ function initHome({ updateStats, updateUIState, runSwTask, refreshBackendSendBut
     'btn-scrape-was-companies': 'https://www.workatastartup.com/companies?demographic=any&hasEquity=any&hasSalary=any&industry=any&interviewProcess=any&jobType=any&layout=list-compact&sortBy=created_desc&tab=any&usVisaNotRequired=any',
     'btn-scrape-was-jobs': 'https://www.workatastartup.com/jobs/r/software-engineer',
     'btn-scrape-yc': 'https://www.ycombinator.com/companies',
-    'btn-scrape-wf': 'https://www.wellfound.com/jobs',
+    'btn-scrape-wf': 'https://www.wellfound.com/jobs#jfh-autoscrape',
     'btn-scrape-ph': 'https://www.producthunt.com/leaderboard/daily',
     'btn-scrape-cb': 'https://www.crunchbase.com/discover/organization.companies',
     'btn-scrape-ts': 'https://www.techstars.com/portfolio',
@@ -45,6 +45,10 @@ function initHome({ updateStats, updateUIState, runSwTask, refreshBackendSendBut
     }
 
     chrome.runtime.sendMessage({ type: 'START_BATCH_EMAIL' }, (response) => {
+      if (chrome.runtime.lastError) {
+        console.warn('[JFH] sendMessage error:', chrome.runtime.lastError.message);
+        return;
+      }
       if (response && response.success) {
         updateUIState(true, false, 0, response.count, 'Starting...');
       } else {
@@ -57,26 +61,92 @@ function initHome({ updateStats, updateUIState, runSwTask, refreshBackendSendBut
     const isPausing = pauseBtn.textContent === 'Pause';
     chrome.runtime.sendMessage({
       type: isPausing ? JFH_CONFIG.MESSAGES.PAUSE_PROCESS : JFH_CONFIG.MESSAGES.RESUME_PROCESS
+    }, () => {
+      if (chrome.runtime.lastError) {
+        console.warn('[JFH] sendMessage error:', chrome.runtime.lastError.message);
+        return;
+      }
+      pauseBtn.textContent = isPausing ? 'Resume' : 'Pause';
+      pauseBtn.className = isPausing ? 'btn primary' : 'btn warning';
     });
-    pauseBtn.textContent = isPausing ? 'Resume' : 'Pause';
-    pauseBtn.className = isPausing ? 'btn primary' : 'btn warning';
   });
 
   stopBtn.addEventListener('click', () => {
-    chrome.runtime.sendMessage({ type: JFH_CONFIG.MESSAGES.STOP_PROCESS });
-    updateUIState(false, false);
+    chrome.runtime.sendMessage({ type: JFH_CONFIG.MESSAGES.STOP_PROCESS }, () => {
+      if (chrome.runtime.lastError) {
+        console.warn('[JFH] sendMessage error:', chrome.runtime.lastError.message);
+        return;
+      }
+      updateUIState(false, false);
+    });
   });
 
   const sendDraftsBtn = document.getElementById('btn-send-drafts');
   sendDraftsBtn.addEventListener('click', () => {
     if (confirm('Are you sure you want to open and SEND all pending drafts? Make sure you have reviewed them!')) {
       chrome.runtime.sendMessage({ type: 'START_SENDING_DRAFTS' }, (response) => {
+        if (chrome.runtime.lastError) {
+          console.warn('[JFH] sendMessage error:', chrome.runtime.lastError.message);
+          return;
+        }
         if (response && response.success) {
           alert('Batch sending drafts started!');
         }
       });
     }
   });
+
+  // Save LinkedIn Button
+  const saveLinkedInBtn = document.getElementById('btn-save-linkedin');
+  const saveLinkedInInput = document.getElementById('save-linkedin-url');
+  const saveLinkedInStatus = document.getElementById('save-linkedin-status');
+
+  if (saveLinkedInBtn) {
+    saveLinkedInBtn.addEventListener('click', async () => {
+      const url = saveLinkedInInput?.value?.trim();
+      if (!url) {
+        alert('Please enter a LinkedIn profile URL');
+        return;
+      }
+
+      if (!url.includes('linkedin.com/in/')) {
+        alert('Please enter a valid LinkedIn profile URL');
+        return;
+      }
+
+      saveLinkedInBtn.disabled = true;
+      saveLinkedInBtn.textContent = 'Saving...';
+      if (saveLinkedInStatus) {
+        saveLinkedInStatus.style.display = 'block';
+        saveLinkedInStatus.textContent = 'Saving...';
+        saveLinkedInStatus.style.color = 'var(--primary)';
+      }
+
+      try {
+        const result = await JFH_DB.saveLinkedInProfile(url);
+        if (result.isDuplicate) {
+          if (saveLinkedInStatus) {
+            saveLinkedInStatus.textContent = 'This LinkedIn profile is already saved!';
+            saveLinkedInStatus.style.color = 'var(--text-muted)';
+          }
+        } else {
+          if (saveLinkedInStatus) {
+            saveLinkedInStatus.textContent = `✅ Saved: ${result.name}`;
+            saveLinkedInStatus.style.color = '#00B894';
+          }
+          if (saveLinkedInInput) saveLinkedInInput.value = '';
+        }
+      } catch (error) {
+        if (saveLinkedInStatus) {
+          saveLinkedInStatus.textContent = `❌ Error: ${error.message}`;
+          saveLinkedInStatus.style.color = '#E17055';
+        }
+      } finally {
+        saveLinkedInBtn.disabled = false;
+        saveLinkedInBtn.textContent = '💾 Save LinkedIn';
+      }
+    });
+  }
 
   // Find Founders Button
   const findFoundersBtn = document.getElementById('btn-find-founders');
@@ -93,6 +163,13 @@ function initHome({ updateStats, updateUIState, runSwTask, refreshBackendSendBut
     foundersProgressCont.style.display = 'block';
 
     chrome.runtime.sendMessage({ type: 'SCRAPE_ALL_FOUNDERS' }, (response) => {
+      if (chrome.runtime.lastError) {
+        console.warn('[JFH] sendMessage error:', chrome.runtime.lastError.message);
+        findFoundersBtn.disabled = false;
+        findFoundersBtn.textContent = '🔍 Find All Founders';
+        foundersProgressCont.style.display = 'none';
+        return;
+      }
       if (response && !response.success) {
         alert(response.message || 'Failed to start founder scan');
         findFoundersBtn.disabled = false;
@@ -141,21 +218,6 @@ function initHome({ updateStats, updateUIState, runSwTask, refreshBackendSendBut
   }
   if (findEmailsMmBtn) {
     findEmailsMmBtn.addEventListener('click', () => runSwTask('FIND_ALL_EMAILS_MAILMETEOR', 'Finding emails (Mailmeteor)...'));
-  }
-  if (sendBackendBtn) {
-    sendBackendBtn.addEventListener('click', async () => {
-      const founders = await JFH_DB.getAllFounders();
-      const sentLog = await JFH_DB.getAllEmailsSent();
-      const sentEmails = new Set(sentLog.map((e) => (e.email || '').toLowerCase()));
-      const eligible = founders.filter((f) => f.email && !f.contacted && !sentEmails.has((f.email || '').toLowerCase()));
-
-      if (eligible.length === 0) {
-        alert('No new founders to email. All have already been contacted or emailed.');
-        return;
-      }
-
-      runSwTask('SEND_ALL_BACKEND', `Queuing ${eligible.length} emails to backend...`);
-    });
   }
 
   // Refresh count when tab becomes active

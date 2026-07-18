@@ -5,7 +5,7 @@
 // ========== Phase 1: Find Emails Only (no sending) ==========
 
 function startFindingEmails() {
-  if (JFH_State.isRunning) return { error: 'Already running' };
+  if (JFH_State.isRunning) return Promise.resolve({ error: 'Already running' });
 
   return JFH_DB.getAllFounders().then((allFounders) => {
     // Only founders that still need an email discovered
@@ -37,7 +37,7 @@ function startFindingEmails() {
 // ========== Phase 1b: Find Emails via Mailmeteor tool (no sending) ==========
 
 function startFindingEmailsMailmeteor() {
-  if (JFH_State.isRunning) return { error: 'Already running' };
+  if (JFH_State.isRunning) return Promise.resolve({ error: 'Already running' });
 
   return JFH_DB.getAllFounders().then((allFounders) => {
     // Only founders that still need an email discovered
@@ -69,7 +69,7 @@ function startFindingEmailsMailmeteor() {
 // ========== Phase 3: Send All (via Backend queue) with normal links ==========
 
 function startSendingViaBackendNormal() {
-  if (JFH_State.isRunning) return { error: 'Already running' };
+  if (JFH_State.isRunning) return Promise.resolve({ error: 'Already running' });
 
   return JFH_DB.getAllSettings().then((settings) => {
     if (settings.emailActionMode !== 'backend') {
@@ -109,7 +109,7 @@ function startSendingViaBackendNormal() {
 // ========== Phase 3: Send All (via Backend queue) ==========
 
 function startSendingViaBackend() {
-  if (JFH_State.isRunning) return { error: 'Already running' };
+  if (JFH_State.isRunning) return Promise.resolve({ error: 'Already running' });
 
   return JFH_DB.getAllSettings().then((settings) => {
     // Auto-set action mode to backend when user explicitly uses backend send
@@ -149,7 +149,7 @@ function startSendingViaBackend() {
 // ========== Batch Emailing Flow (The Orchestrator) ==========
 
 function startBatchEmailing() {
-  if (JFH_State.isRunning) return { error: 'Already running' };
+  if (JFH_State.isRunning) return Promise.resolve({ error: 'Already running' });
 
   return JFH_DB.getAllFounders().then((allFounders) => {
     // Fetch uncontacted founders who HAVE a LinkedIn URL but NO email yet

@@ -73,7 +73,7 @@ async function startFounderScraping() {
 
   // Filter companies that haven't had their detail page scraped
   JFH_State.founderScrapeQueue = companies.filter(c =>
-    (c.source === 'yc' || c.source === 'workatastartup') &&
+    (c.source === 'yc' || c.source === 'workatastartup' || c.source === 'wellfound') &&
     (c.sourceUrl || c.profileUrl) &&
     !c.foundersScraped
   );

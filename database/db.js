@@ -268,6 +268,46 @@ const JFH_DB = {
     return this._put('founders', record);
   },
 
+  async saveLinkedInProfile(linkedinUrl, options = {}) {
+    await this.init();
+    
+    if (!linkedinUrl || !linkedinUrl.includes('linkedin.com/in/')) {
+      throw new Error('Invalid LinkedIn URL');
+    }
+
+    // Check for duplicates
+    const existing = await this._getByIndex('founders', 'linkedinUrl', linkedinUrl);
+    if (existing && existing.length > 0) {
+      return { ...existing[0], isDuplicate: true };
+    }
+
+    // Extract name from URL if not provided
+    let name = options.name || '';
+    if (!name) {
+      const match = linkedinUrl.match(/linkedin\.com\/in\/([^/?#]+)/);
+      if (match && match[1]) {
+        name = match[1].replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      }
+    }
+
+    const founder = {
+      id: options.id || `fdr_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+      name: name || 'LinkedIn Profile',
+      title: options.title || 'Saved from LinkedIn',
+      role: options.role || 'LinkedIn Contact',
+      companyId: options.companyId || '',
+      companyName: options.companyName || '',
+      linkedinUrl: linkedinUrl,
+      email: options.email || '',
+      status: options.status || 'pending',
+      contacted: false,
+      contactedAt: null,
+      addedAt: Date.now(),
+    };
+
+    return this._put('founders', founder);
+  },
+
   /**
    * Add multiple founders in batch
    */
